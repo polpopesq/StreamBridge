@@ -1,13 +1,14 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, IconButton } from "@mui/material";
-import { Link } from "react-router-dom";
+import { AppBar, Toolbar, Typography, IconButton, Box, Menu, Container, Avatar, Button, Tooltip, MenuItem } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 import MoonIcon from "../assets/icons/dark/MoonIcon.png";
-import DarkLogo from "../assets/icons/dark/Logo-dark.png";
-import FullDarkLogo from "../assets/icons/dark/FullDarkLogo.png";
+import DarkLogo from "../assets/icons/dark/DarkLogo.png";
+//import FullDarkLogo from "../assets/icons/dark/FullDarkLogo.png";
 import SunIcon from "../assets/icons/light/SunIcon.png";
 import LightLogo from "../assets/icons/light/LightLogo.png";
-import FullLightLogo from "../assets/icons/light/FullLightLogo.png";
+//import FullLightLogo from "../assets/icons/light/FullLightLogo.png";
 
+const pages = ['acasa', 'platforme', 'login'];
 
 interface NavbarProps {
   darkMode: boolean;
@@ -15,37 +16,73 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
+
+  const navigate = useNavigate();
+
+  const handleNavButtonClick = (page: string) => {
+    navigate(`/${page}`);
+  }
+
   return (
-    <AppBar position="static">
-      <Toolbar>
-        <img
-          src={darkMode ? FullDarkLogo : FullLightLogo}
-          alt="StreamBridge Logo"
-          style={{ height: 100 }}
-        />
-        <Link to="/">Home</Link>
-        <Link to="/login">Login</Link>
-        <Link to="/register">Register</Link>
-        <IconButton
-          onClick={() => setDarkMode(!darkMode)}
-          color="inherit"
-          sx={{
-            "&:focus": {
-              outline: "none",
-            },
-            "&:focus-visible": {
-              outline: "none",
-            },
-          }}
-        >
-          <img
-            src={darkMode ? MoonIcon : SunIcon}
-            alt="theme icon"
-            style={{ width: 30, height: 30 }}
-          />
-        </IconButton>
-      </Toolbar>
-    </AppBar>
+    <>
+      <AppBar position="fixed">
+        <Container maxWidth="xl">
+          <Toolbar disableGutters>
+            <img
+              src={darkMode ? DarkLogo : LightLogo}
+              alt="StreamBridge Logo"
+              style={{ height: 60, marginRight: 5 }}
+            />
+            <Typography
+              variant="h6"
+              noWrap
+              component="a"
+              href="/"
+              sx={{
+                mr: 2,
+                display: { xs: 'none', md: 'flex' },
+                fontFamily: 'monospace',
+                fontWeight: 700,
+                letterSpacing: '.21rem',
+                color: 'inherit',
+                textDecoration: 'none',
+              }}
+            >
+              streambridge
+            </Typography>
+            <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
+              {pages.map((page) => (
+                <Button
+                  key={page}
+                  onClick={() => { handleNavButtonClick(page) }}
+                  sx={{ my: 2, color: 'inherit', display: 'block' }}
+                >
+                  {page}
+                </Button>
+              ))}
+            </Box>
+            <IconButton
+              onClick={() => setDarkMode(!darkMode)}
+              color="inherit"
+              sx={{
+                "&:focus": {
+                  outline: "none",
+                },
+                "&:focus-visible": {
+                  outline: "none",
+                },
+              }}
+            >
+              <img
+                src={darkMode ? MoonIcon : SunIcon}
+                alt="theme icon"
+                style={{ width: 30, height: 30 }}
+              />
+            </IconButton>
+          </Toolbar>
+        </Container>
+      </AppBar>
+    </>
   );
 };
 

@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import routes from "./routes/v1";
 import session from 'express-session';
 import cookieParser from "cookie-parser";
+import {pool, initDB} from "./config/db";
 
 dotenv.config();
 
@@ -22,5 +23,7 @@ app.use(session({
 }));
 
 app.use("/api/v1", routes);
+
+initDB();
 
 export default app;

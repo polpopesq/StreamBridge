@@ -7,6 +7,7 @@ import LandingPage from "./pages/LandingPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Navbar from "./components/Navbar";
+import PlatformsPage from "./pages/PlatformsPage";
 
 function App() {
   const [darkMode, setDarkMode] = useState(false);
@@ -18,8 +19,10 @@ function App() {
         <Navbar darkMode={darkMode} setDarkMode={setDarkMode} />
         <Routes>
           <Route path="/" element={<LandingPage />} />
+          <Route path="/acasa" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/platforme" element={<PlatformsPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

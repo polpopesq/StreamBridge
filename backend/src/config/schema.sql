@@ -1,0 +1,49 @@
+CREATE TABLE IF NOT EXISTS users (
+    id SERIAL PRIMARY KEY,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS platforms (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) UNIQUE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS linked_platforms (
+    id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL,
+    platform_id INT NOT NULL,
+    refresh_token VARCHAR(255) NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS playlists (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    user_id INT NOT NULL,
+    platform_id INT NOT NULL,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS artists (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    genre VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS songs (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    artist_id INT NOT NULL,
+    FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS playlist_songs (
+    id SERIAL PRIMARY KEY,
+    playlist_id INT NOT NULL,
+    song_id INT NOT NULL,
+    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+);
