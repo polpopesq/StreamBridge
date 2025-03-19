@@ -1,5 +1,5 @@
 import React from "react";
-import { AppBar, Toolbar, Typography, IconButton, Box, Menu, Container, Avatar, Button, Tooltip, MenuItem } from "@mui/material";
+import { AppBar, Toolbar, Typography, IconButton, Box, Container, Button } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import MoonIcon from "../assets/icons/dark/MoonIcon.png";
 import DarkLogo from "../assets/icons/dark/DarkLogo.png";
@@ -37,8 +37,9 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
               variant="h6"
               noWrap
               component="a"
-              href="/"
+              onClick={() => { handleNavButtonClick("") }}
               sx={{
+                cursor: 'pointer',
                 mr: 2,
                 display: { xs: 'none', md: 'flex' },
                 fontFamily: 'monospace',
@@ -55,7 +56,17 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
                 <Button
                   key={page}
                   onClick={() => { handleNavButtonClick(page) }}
-                  sx={{ my: 2, color: 'inherit', display: 'block' }}
+                  sx={{
+                    "&:focus": {
+                      outline: "none",
+                    },
+                    "&:focus-visible": {
+                      outline: "none",
+                    },
+                    my: 2,
+                    color: 'inherit',
+                    display: 'block'
+                  }}
                 >
                   {page}
                 </Button>
