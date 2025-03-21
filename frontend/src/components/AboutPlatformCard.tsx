@@ -2,10 +2,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardMedia from '@mui/material/CardMedia';
 import Typography from '@mui/material/Typography';
-import Button from '@mui/material/Button';
 import CardActionArea from '@mui/material/CardActionArea';
-import CardActions from '@mui/material/CardActions';
-import { useNavigate } from 'react-router-dom';
 
 
 interface PlatformCardProps {
@@ -15,36 +12,24 @@ interface PlatformCardProps {
 }
 
 export default function AboutPlatformCard({ name, description, image }: PlatformCardProps) {
-  const navigate = useNavigate();
-
-  const handleShareClick = (platformName : string) : void => {
-      navigate(`/${platformName.toLocaleLowerCase()}`);
-  }
-
   return (
-    <Card sx={{ maxWidth: 425, height: 440, display: 'flex', flexDirection: 'column' }}>
-      <CardActionArea>
+    <Card sx={{ width: "85%", height: "100%", display: 'flex', flexDirection: 'column' }}>
+      <CardActionArea sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         <CardMedia
           component="img"
-          height="160"
           image={image}
           alt={image}
-          sx={{ objectFit: "contain", paddingTop: 3 }}
+          sx={{ objectFit: "contain", flexShrink: 0, maxHeight: 160, paddingTop: 3 }}
         />
-        <CardContent sx={{ flexGrow: 1 }}>
+        <CardContent sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
           <Typography gutterBottom variant="h5" component="div">
             {name}
           </Typography>
-          <Typography variant="body2" sx={{ color: 'secondary' }}>
+          <Typography variant="body2" sx={{ color: 'secondary', flexGrow: 1 }}>
             {description}
           </Typography>
         </CardContent>
       </CardActionArea>
-      <CardActions sx={{ mt: 'auto', justifyContent: 'center' }}>
-        <Button size="small" color="primary" onClick={() => handleShareClick(name)}>
-          Distribuie din {name}
-        </Button>
-      </CardActions>
     </Card>
   );
 }

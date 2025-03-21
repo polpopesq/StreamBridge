@@ -7,8 +7,7 @@ import DarkLogo from "../assets/icons/dark/DarkLogo.png";
 import SunIcon from "../assets/icons/light/SunIcon.png";
 import LightLogo from "../assets/icons/light/LightLogo.png";
 //import FullLightLogo from "../assets/icons/light/FullLightLogo.png";
-
-const pages = ['acasa', 'platforme', 'login'];
+import { navbarPages } from "../constants";
 
 interface NavbarProps {
   darkMode: boolean;
@@ -52,7 +51,7 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
               streambridge
             </Typography>
             <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-              {pages.map((page) => (
+              {navbarPages.map((page) => (
                 <Button
                   key={page}
                   onClick={() => { handleNavButtonClick(page) }}
