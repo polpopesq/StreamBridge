@@ -2,6 +2,8 @@ import SpotifyLogo from "./assets/logos/spotifyLogo.svg.png";
 import YoutubeMusicLogo from "./assets/logos/youtubeMusicLogo.svg.png";
 import PlainTextLogo from "./assets/logos/txtLogo.png";
 
+export const BACKEND_URL = "http://localhost:8080/api/v1";
+
 export const platformData: Record<string, { name: string, description: string; logo: string }> = {
   "spotify": {
     name: "Spotify",
@@ -21,3 +23,4 @@ export const platformData: Record<string, { name: string, description: string; l
 };
 
 export const navbarPages = ['acasa', 'platforme', 'login'];
+export const loggedNavbarPages = ['acasa', 'platforme', 'transfera', 'contul meu', 'logout'];

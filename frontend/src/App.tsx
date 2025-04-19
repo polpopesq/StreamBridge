@@ -8,9 +8,14 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import Navbar from "./components/Navbar";
 import PlatformsPage from "./pages/PlatformsPage";
-import PlatformSelector from "./pages/PlatformSelector";
+import TransferWizard from "./pages/TransferWizard";
+import AccountPage from "./pages/AccountPage";
+import { isLoggedIn } from "./services/authService";
+import { useAuth } from "./services/AuthContext";
+import { ProtectedRoute } from "./services/ProtectedRoute";
 
 function App() {
+  const { loggedIn, setLoggedIn } = useAuth();
   const [darkMode, setDarkMode] = useState(() => {
     const theme = localStorage.getItem("theme");
     return theme === "dark";
@@ -19,6 +24,15 @@ function App() {
   useEffect(() => {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  useEffect(() => {
+    const checkLogin = async () => {
+      const logged = await isLoggedIn();
+      setLoggedIn(logged);
+    };
+    checkLogin();
+  }, []);
+
 
   return (
     <ThemeProvider theme={darkMode ? darkTheme : lightTheme}>
@@ -31,7 +45,14 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/platforme" element={<PlatformsPage />} />
-          <Route path="/platformselector" element={<PlatformSelector />} />
+          <Route path="/transfera" element=
+            {<ProtectedRoute isAuthenticated={loggedIn}>
+              <TransferWizard />
+            </ProtectedRoute>} />
+          <Route path="/contul meu" element=
+            {<ProtectedRoute isAuthenticated={loggedIn}>
+              <AccountPage />
+            </ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

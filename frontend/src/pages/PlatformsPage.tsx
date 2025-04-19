@@ -7,7 +7,7 @@ const PlatformsPage = () => {
   const navigate = useNavigate();
 
   const handleTransferButtonClick = () => {
-    navigate("/platformselector");
+    navigate("/transfera");
   }
 
   const handlePlatformInfoClick = (platformKey: string) => {

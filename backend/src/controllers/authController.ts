@@ -4,6 +4,7 @@ import {
   AuthenticatedRequest,
   tokenMiddleware,
 } from "../middlewares/tokenMiddleware";
+import { AUTH_COOKIE } from "../middlewares/tokenMiddleware";
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
@@ -22,7 +23,9 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   const token = tokenMiddleware.signJWT({ user_id: user.id });
 
-  res.cookie("auth_token", token, {
+  console.log(token);
+
+  res.cookie(AUTH_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

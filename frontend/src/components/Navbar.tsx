@@ -7,7 +7,9 @@ import DarkLogo from "../assets/icons/dark/DarkLogo.png";
 import SunIcon from "../assets/icons/light/SunIcon.png";
 import LightLogo from "../assets/icons/light/LightLogo.png";
 //import FullLightLogo from "../assets/icons/light/FullLightLogo.png";
-import { navbarPages } from "../constants";
+import { navbarPages, loggedNavbarPages } from "../constants";
+import { useAuth } from "../services/AuthContext";
+import { BACKEND_URL } from "../constants";
 
 interface NavbarProps {
   darkMode: boolean;
@@ -15,11 +17,26 @@ interface NavbarProps {
 }
 
 const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
+  const { loggedIn, setLoggedIn } = useAuth();
+  const pagesToDisplay = loggedIn ? loggedNavbarPages : navbarPages;
 
   const navigate = useNavigate();
 
-  const handleNavButtonClick = (page: string) => {
-    navigate(`/${page}`);
+  const handleNavButtonClick = async (page: string) => {
+    if (page === "logout") {
+      setLoggedIn(false);
+      localStorage.removeItem("loggedIn");
+
+      //pt stergere cookie
+      await fetch(`${BACKEND_URL}/auth/logout`, {
+        credentials: "include",
+      });
+
+      navigate("/login");
+    }
+    else {
+      navigate(`/${page}`);
+    }
   }
 
   return (
@@ -51,7 +68,7 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
               streambridge
             </Typography>
             <Box sx={{ flexGrow: 1, display: { xs: 'none', md: 'flex' } }}>
-              {navbarPages.map((page) => (
+              {pagesToDisplay.map((page) => (
                 <Button
                   key={page}
                   onClick={() => { handleNavButtonClick(page) }}

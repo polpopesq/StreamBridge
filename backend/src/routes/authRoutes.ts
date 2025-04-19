@@ -13,7 +13,7 @@ router.post("/login", login);
 router.post("/register", register);
 
 //protected
-router.post("/logout", tokenMiddleware.validateJWT, logout);
+router.get("/logout", tokenMiddleware.validateJWT, logout);
 router.get("/me", tokenMiddleware.validateJWT, getActiveUser);
 
 export default router;

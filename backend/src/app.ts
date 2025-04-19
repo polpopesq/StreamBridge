@@ -28,6 +28,6 @@ app.use(
 
 app.use("/api/v1", routes);
 
-//initDB();
+initDB();
 
 export default app;

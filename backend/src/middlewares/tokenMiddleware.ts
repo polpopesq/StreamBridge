@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { Request, Response, NextFunction } from "express";
 import jwt, { JwtPayload } from "jsonwebtoken";
-const COOKIE_NAME = "auth_token";
+export const AUTH_COOKIE = "auth_token";
 
 dotenv.config();
 const JWT_SECRET = process.env.JWT_SECRET || "default_secret";
@@ -23,7 +23,7 @@ export const tokenMiddleware = {
   },
 
   validateJWT: (req: Request, res: Response, next: NextFunction): void => {
-    const token = req.cookies?.[COOKIE_NAME];
+    const token = req.cookies?.[AUTH_COOKIE];
 
     if (!token) {
       res.status(401).json({ message: "Not authenticated" });
@@ -41,7 +41,7 @@ export const tokenMiddleware = {
   },
 
   clearCookie: (res: Response): void => {
-    res.clearCookie(COOKIE_NAME, {
+    res.clearCookie(AUTH_COOKIE, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
       sameSite: "lax",
