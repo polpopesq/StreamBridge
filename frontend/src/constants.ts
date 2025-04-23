@@ -4,7 +4,8 @@ import PlainTextLogo from "./assets/logos/txtLogo.png";
 
 export const BACKEND_URL = "http://localhost:8080/api/v1";
 
-export const platformData: Record<string, { name: string, description: string; logo: string }> = {
+export type PlatformKey = 'spotify' | 'ytMusic' | 'txt';
+export const platformData: Record<PlatformKey, { name: string, description: string; logo: string }> = {
   "spotify": {
     name: "Spotify",
     description: "Spotify is a digital music streaming service with millions of songs and podcasts.",

@@ -47,3 +47,9 @@ CREATE TABLE IF NOT EXISTS playlist_songs (
     FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
 );
+
+INSERT INTO platforms (name) VALUES
+  ('spotify'),
+  ('ytMusic'),
+  ('txt')
+ON CONFLICT (name) DO NOTHING;

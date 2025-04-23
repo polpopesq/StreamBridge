@@ -39,10 +39,14 @@ export const callback = async (
   }
 
   await exchangeCodeForTokens(code, userId);
+
+  res.clearCookie("oauth_state");
+  res.redirect(`http://localhost:5173/transfera/spotify`);
 };
+//TODO : check spotify connection, whether that worked
 
-export const search = (req: Request, res: Response) => {};
+export const search = (req: Request, res: Response) => { };
 
-export const createPlaylist = (req: Request, res: Response) => {};
+export const createPlaylist = (req: Request, res: Response) => { };
 
-export const addTracks = (req: Request, res: Response) => {};
+export const addTracks = (req: Request, res: Response) => { };

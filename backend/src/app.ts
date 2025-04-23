@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 import routes from "./routes";
 import session from "express-session";
 import cookieParser from "cookie-parser";
-import { pool, initDB } from "./config/db";
+import { initDB } from "./config/db";
 
 dotenv.config();
 

@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState } from "react";
 import { AppBar, Toolbar, Typography, IconButton, Box, Container, Button } from "@mui/material";
+import ConfirmDialog from "./ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import MoonIcon from "../assets/icons/dark/MoonIcon.png";
 import DarkLogo from "../assets/icons/dark/DarkLogo.png";
@@ -16,23 +17,32 @@ interface NavbarProps {
   setDarkMode: (mode: boolean) => void;
 }
 
+
+
 const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
   const { loggedIn, setLoggedIn } = useAuth();
+  const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
   const pagesToDisplay = loggedIn ? loggedNavbarPages : navbarPages;
 
   const navigate = useNavigate();
 
+  const confirmLogoutHandler = async () => {
+    setLoggedIn(false);
+    localStorage.removeItem("loggedIn");
+
+    //pt stergere cookie
+    await fetch(`${BACKEND_URL}/auth/logout`, {
+      credentials: "include",
+    });
+
+    setOpenConfirmDialog(false);
+
+    navigate("/login");
+  }
+
   const handleNavButtonClick = async (page: string) => {
     if (page === "logout") {
-      setLoggedIn(false);
-      localStorage.removeItem("loggedIn");
-
-      //pt stergere cookie
-      await fetch(`${BACKEND_URL}/auth/logout`, {
-        credentials: "include",
-      });
-
-      navigate("/login");
+      setOpenConfirmDialog(true);
     }
     else {
       navigate(`/${page}`);
@@ -109,6 +119,13 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
           </Toolbar>
         </Container>
       </AppBar>
+      <ConfirmDialog
+        open={openConfirmDialog}
+        title="Logout"
+        description="Esti sigur ca vrei sa te deloghezi?"
+        onCancel={() => setOpenConfirmDialog(false)}
+        onConfirm={async () => { await confirmLogoutHandler() }}
+      />
     </>
   );
 };

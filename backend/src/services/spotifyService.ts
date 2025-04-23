@@ -1,8 +1,19 @@
 import SpotifyWebApi from "spotify-web-api-node";
 import crypto from "crypto";
 import dotenv from "dotenv";
+import { pool } from "../config/db";
 
 dotenv.config();
+
+const tokenCache = new Map<number, { accessToken: string, expiresIn: number }>();
+
+const createSpotifyApi = (): SpotifyWebApi => {
+  return new SpotifyWebApi({
+    clientId: process.env.SPOTIFY_CLIENT_ID || "",
+    clientSecret: process.env.SPOTIFY_CLIENT_SECRET || "",
+    redirectUri: process.env.SPOTIFY_REDIRECT_URI,
+  });
+}
 
 const scopes = [
   "playlist-modify-public",
@@ -10,34 +21,147 @@ const scopes = [
   "playlist-read-private",
 ];
 
-const spotifyApi = new SpotifyWebApi({
-  clientId: process.env.SPOTIFY_CLIENT_ID || "",
-  clientSecret: process.env.SPOTIFY_CLIENT_SECRET || "",
-  redirectUri: process.env.SPOTIFY_REDIRECT_URI,
-});
-
 export const createLoginURL = (): { url: string; state: string } => {
   const state = crypto.randomBytes(16).toString("hex");
-  const url = spotifyApi.createAuthorizeURL(scopes, state, true);
+  const url = createSpotifyApi().createAuthorizeURL(scopes, state, true);
   return { url, state };
 };
 
+const getAccessToken = async (userId: number): Promise<string> => {
+  //1. Poate e deja cache-uit
+  const cached = tokenCache.get(userId);
+  if (cached && cached.expiresIn > Date.now()) {
+    return cached.accessToken;
+  }
+
+  //2. Nu e cache-uit dar avem refresh token in DB de la utilizari anterioare
+  const refreshToken = await getRefreshTokenFromDB(userId);
+  if (refreshToken !== null) {
+    const refreshResult = await refreshAccessToken(refreshToken);
+    if (refreshResult) {
+      const { accessToken, expiresIn } = refreshResult;
+      tokenCache.set(userId, { accessToken, expiresIn });
+      return accessToken;
+    }
+    throw new Error("Token was not refreshed");
+  }
+
+  //3. New user sau nu avem refresh token pt el for some reason
+  throw new Error("User is not linked with Spotify. Start the auth flow.");
+}
+
+//first time for an user
 export const exchangeCodeForTokens = async (
   code: string,
   userId: number
 ): Promise<void> => {
+  const spotifyApi = createSpotifyApi();
+
   const data = await spotifyApi.authorizationCodeGrant(code);
   const accessToken = data.body.access_token;
+  const expiresIn = data.body.expires_in;
+  tokenCache.set(userId, { accessToken, expiresIn });
+
   const refreshToken = data.body.refresh_token;
-
-  spotifyApi.setAccessToken(accessToken);
-  spotifyApi.setRefreshToken(refreshToken);
-
   await saveRefreshToken(userId, refreshToken);
 };
 
-const saveRefreshToken = async (userId: number, refreshToken: string) => {
-  //TODO : save refresh token into database
+const saveRefreshToken = async (userId: number, refreshToken: string): Promise<void> => {
+  try {
+    const platformId = await getPlatformIdByName('spotify');
+
+    if (!platformId) {
+      throw new Error("Platform name 'spotify' not found in the database.")
+    }
+
+    const checkQuery = `
+      SELECT id FROM linked_platforms 
+      WHERE user_id = $1 AND platform_id = $2
+    `;
+    const checkRes = await pool.query(checkQuery, [userId, platformId]);
+
+    if (checkRes.rows.length > 0) {
+      const updateQuery = `
+        UPDATE linked_platforms 
+        SET refresh_token = $1
+        WHERE user_id = $2 AND platform_id = $3
+      `;
+      await pool.query(updateQuery, [refreshToken, userId, platformId]);
+    } else {
+      const insertQuery = `
+        INSERT INTO linked_platforms 
+        (user_id, platform_id, refresh_token)
+        VALUES ($1, $2, $3)
+      `;
+      await pool.query(insertQuery, [userId, platformId, refreshToken]);
+    }
+  } catch (error) {
+    console.error(error);
+  }
 };
 
-const loadTokens = () => {};
+const getRefreshTokenFromDB = async (userId: number): Promise<string | null> => {
+  try {
+    const platformId = getPlatformIdByName("spotify");
+
+    if (!platformId) {
+      console.error("Platform name 'spotify' not found in the database.")
+      return null;
+    }
+
+    const tokenRes = await pool.query(
+      `SELECT refresh_token FROM linked_platforms 
+       WHERE user_id = $1 AND platform_id = $2`,
+      [userId, platformId]
+    );
+
+    if (tokenRes.rows.length === 0) {
+      return null;
+    }
+
+    return tokenRes.rows[0].refresh_token;
+  } catch (error) {
+    console.error('Error loading tokens:', error);
+    return null;
+  }
+};
+
+const getPlatformIdByName = async (platformName: string): Promise<number | null> => {
+  const platformRes = await pool.query(
+    'SELECT id FROM platforms WHERE name = $1',
+    [platformName]
+  );
+
+  return platformRes.rows.length > 0 ? platformRes.rows[0].id : null;
+}
+
+export const refreshAccessToken = async (refreshToken: string): Promise<{
+  accessToken: string;
+  expiresIn: number;
+} | null> => {
+  const credentials = `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`;
+  const encodedCredentials = Buffer.from(credentials).toString("base64");
+
+  const response = await fetch("https://accounts.spotify.com/api/token", {
+    method: "POST",
+    headers: {
+      "Authorization": `Basic ${encodedCredentials}`,
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: new URLSearchParams({
+      grant_type: "refresh_token",
+      refresh_token: refreshToken
+    })
+  });
+
+  if (!response.ok) {
+    console.error("Failed to refresh access token")
+    return null;
+  }
+
+  const data = await response.json();
+  return {
+    accessToken: data.access_token,
+    expiresIn: data.expires_in
+  };
+}

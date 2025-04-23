@@ -45,7 +45,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/platforme" element={<PlatformsPage />} />
-          <Route path="/transfera" element=
+          <Route path="/transfera/:sourcePlatform?" element=
             {<ProtectedRoute isAuthenticated={loggedIn}>
               <TransferWizard />
             </ProtectedRoute>} />
