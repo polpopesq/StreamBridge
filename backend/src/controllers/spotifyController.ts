@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
-import {
-  createLoginURL,
-  exchangeCodeForTokens,
-} from "../services/spotifyService";
+import * as spotifyService from "../services/spotifyService";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 //pasul 1. apelam /login din backend
 //aceasta ruta creeaza un url pe care utilizatorul este directionat sa se logheze si sa dea permisiuni
 //daca accepta, e redirectionat catre redirect uri
 export const login = (req: Request, res: Response): void => {
-  const { url, state } = createLoginURL();
+  const { url, state } = spotifyService.createLoginURL();
   res.cookie("oauth_state", state, { httpOnly: true, secure: true });
   res.redirect(url);
 };
@@ -38,12 +38,21 @@ export const callback = async (
     return;
   }
 
-  await exchangeCodeForTokens(code, userId);
+  await spotifyService.exchangeCodeForTokens(code, userId);
 
   res.clearCookie("oauth_state");
-  res.redirect(`http://localhost:5173/transfera/spotify`);
+  res.redirect(`${process.env.FRONTEND_URL}/transfera/spotify`);
 };
-//TODO : check spotify connection, whether that worked
+
+export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.user_id as number;
+  try {
+    const userData = await spotifyService.getCurrentUser(userId);
+    res.status(200).json({ "spotify_user_id": userData.id, "spotify_display_name": userData.display_name });
+  } catch (error) {
+    res.status(500).json({ "message": "Unexpected error fetching spotify user data." })
+  }
+}
 
 export const search = (req: Request, res: Response) => { };
 

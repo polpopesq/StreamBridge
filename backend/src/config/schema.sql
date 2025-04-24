@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS linked_platforms (
     id SERIAL PRIMARY KEY,
     user_id INT NOT NULL,
     platform_id INT NOT NULL,
+    user_platform_id VARCHAR(255),
     refresh_token VARCHAR(255) NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE

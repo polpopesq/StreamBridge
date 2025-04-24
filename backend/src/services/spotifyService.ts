@@ -19,6 +19,8 @@ const scopes = [
   "playlist-modify-public",
   "playlist-modify-private",
   "playlist-read-private",
+  "user-read-private",
+  "user-read-email"
 ];
 
 export const createLoginURL = (): { url: string; state: string } => {
@@ -102,7 +104,7 @@ const saveRefreshToken = async (userId: number, refreshToken: string): Promise<v
 
 const getRefreshTokenFromDB = async (userId: number): Promise<string | null> => {
   try {
-    const platformId = getPlatformIdByName("spotify");
+    const platformId = await getPlatformIdByName("spotify");
 
     if (!platformId) {
       console.error("Platform name 'spotify' not found in the database.")
@@ -134,6 +136,29 @@ const getPlatformIdByName = async (platformName: string): Promise<number | null>
 
   return platformRes.rows.length > 0 ? platformRes.rows[0].id : null;
 }
+
+export const getCurrentUser = async (userId: number): Promise<{ display_name: string, id: string }> => {
+  const accessToken = await getAccessToken(userId);
+
+  const res = await fetch("https://api.spotify.com/v1/me", {
+    headers: {
+      "Authorization": `Bearer ${accessToken}`
+    }
+  });
+
+  if (!res.ok) {
+    console.log(await res.text());
+    throw new Error(`Spotify API error: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return { display_name: data.display_name, id: data.id };
+}
+
+// export const getUserPlaylists = async (): Promise<> => {
+//   const spotify = createSpotifyApi();
+//   spotify.getUserPlaylists()
+// }
 
 export const refreshAccessToken = async (refreshToken: string): Promise<{
   accessToken: string;
