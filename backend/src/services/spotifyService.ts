@@ -2,6 +2,7 @@ import SpotifyWebApi from "spotify-web-api-node";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
+import e from "express";
 
 dotenv.config();
 
@@ -140,25 +141,20 @@ const getPlatformIdByName = async (platformName: string): Promise<number | null>
 export const getCurrentUser = async (userId: number): Promise<{ display_name: string, id: string }> => {
   const accessToken = await getAccessToken(userId);
 
-  const res = await fetch("https://api.spotify.com/v1/me", {
+  const response = await fetch("https://api.spotify.com/v1/me", {
     headers: {
       "Authorization": `Bearer ${accessToken}`
     }
   });
 
-  if (!res.ok) {
-    console.log(await res.text());
-    throw new Error(`Spotify API error: ${res.status}`);
+  if (!response.ok) {
+    console.log(await response.text());
+    throw new Error(`Spotify API error: ${response.status}`);
   }
 
-  const data = await res.json();
+  const data = await response.json();
   return { display_name: data.display_name, id: data.id };
 }
-
-// export const getUserPlaylists = async (): Promise<> => {
-//   const spotify = createSpotifyApi();
-//   spotify.getUserPlaylists()
-// }
 
 export const refreshAccessToken = async (refreshToken: string): Promise<{
   accessToken: string;
@@ -189,4 +185,68 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{
     accessToken: data.access_token,
     expiresIn: data.expires_in
   };
+}
+
+export const getPlaylistsWithTracks = async (userId: number) => {
+  try {
+    const accessToken = await getAccessToken(userId);
+
+    const response = await fetch("https://api.spotify.com/v1/me/playlists", {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error(await response.text());
+      throw new Error(`Spotify API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const playlistsWithTracks = await Promise.all(
+      data.items.map(async (playlist: any) => {
+        const tracksResponse = await fetch(playlist.tracks.href, {
+          headers: {
+            "Authorization": `Bearer ${accessToken}`
+          }
+        });
+
+        if (!tracksResponse.ok) {
+          console.error(await tracksResponse.text());
+          throw new Error(`Spotify API error: ${tracksResponse.status}`);
+        }
+
+        const tracksData = await tracksResponse.json();
+        return { ...playlist, tracks: tracksData.items };
+      })
+    );
+    return playlistsWithTracks;
+  } catch (error) {
+    console.error("Error fetching playlists", error);
+    throw new Error(`Failed to fetch playlists`);
+  }
+};
+
+export const getPlaylistTracks = async (playlistId: string, userId: number) => {
+  try {
+    const accessToken = await getAccessToken(userId);
+
+    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      headers: {
+        "Authorization": `Bearer ${accessToken}`
+      }
+    });
+
+    if (!response.ok) {
+      console.error(await response.text());
+      throw new Error(`Spotify API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    return data.items;
+  } catch (error) {
+    console.error("Error fetching playlist tracks", error);
+    throw new Error(`Failed to fetch playlist tracks`);
+  }
 }

@@ -54,6 +54,16 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) =
   }
 }
 
+export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.user_id as number;
+  try {
+    const playlists = await spotifyService.getPlaylistsWithTracks(userId);
+    res.status(200).json(playlists);
+  } catch (error) {
+    res.status(500).json({ "message": "Unexpected error fetching spotify user playlists." })
+  }
+}
+
 export const search = (req: Request, res: Response) => { };
 
 export const createPlaylist = (req: Request, res: Response) => { };

@@ -5,9 +5,11 @@ import { PlatformKey } from "../../constants";
 
 interface SelectSourceProps {
     onChange: (platform: PlatformKey) => void;
+    type: string;
+    exclude: PlatformKey | null;
 }
 
-const SelectSource: React.FC<SelectSourceProps> = ({ onChange }) => {
+const SelectSource: React.FC<SelectSourceProps> = ({ onChange, type, exclude }) => {
     const [platform, setPlatform] = useState("");
     useEffect(() => {
         const platformKey = platform as PlatformKey;
@@ -16,9 +18,8 @@ const SelectSource: React.FC<SelectSourceProps> = ({ onChange }) => {
 
     return (
         <Box textAlign="center">
-            <Typography variant="h6" mb={3}>Alege platforma sursă</Typography>
-            <PlatformCardsContainer handleBoxClick={setPlatform} />
-            {/* Simulează alegerea unei platforme */}
+            <Typography variant="h6" mb={3}>{`Alege platforma ${type}`}</Typography>
+            <PlatformCardsContainer handleBoxClick={setPlatform} exclude={exclude} />
         </Box>
     );
 }

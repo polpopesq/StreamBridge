@@ -5,7 +5,8 @@ import {
   search,
   createPlaylist,
   addTracks,
-  getCurrentUser
+  getCurrentUser,
+  getPlaylistsWithTracks
 } from "../controllers/spotifyController";
 
 const router = Router();
@@ -16,5 +17,6 @@ router.get("/search", search);
 router.get("/create-playlist", createPlaylist);
 router.post("/add-tracks", addTracks);
 router.get("/me", getCurrentUser);
+router.get("/playlists", getPlaylistsWithTracks);
 
 export default router;
