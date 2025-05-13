@@ -3,6 +3,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
 import e from "express";
+import { get } from "http";
 
 dotenv.config();
 
@@ -206,19 +207,8 @@ export const getPlaylistsWithTracks = async (userId: number) => {
 
     const playlistsWithTracks = await Promise.all(
       data.items.map(async (playlist: any) => {
-        const tracksResponse = await fetch(playlist.tracks.href, {
-          headers: {
-            "Authorization": `Bearer ${accessToken}`
-          }
-        });
-
-        if (!tracksResponse.ok) {
-          console.error(await tracksResponse.text());
-          throw new Error(`Spotify API error: ${tracksResponse.status}`);
-        }
-
-        const tracksData = await tracksResponse.json();
-        return { ...playlist, tracks: tracksData.items };
+        const tracksData = await getPlaylistTracks(playlist.tracks.href, accessToken);
+        return { ...playlist, tracks: tracksData };
       })
     );
     return playlistsWithTracks;
@@ -228,11 +218,15 @@ export const getPlaylistsWithTracks = async (userId: number) => {
   }
 };
 
-export const getPlaylistTracks = async (playlistId: string, userId: number) => {
-  try {
-    const accessToken = await getAccessToken(userId);
+export const getPlaylistTracks = async (
+  href: string,
+  accessToken: string
+): Promise<any[]> => {
+  let tracks: any[] = [];
+  let nextUrl: string | null = `${href}?limit=100`;
 
-    const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+  while (nextUrl) {
+    const response: Response = await fetch(nextUrl, {
       headers: {
         "Authorization": `Bearer ${accessToken}`
       }
@@ -243,10 +237,11 @@ export const getPlaylistTracks = async (playlistId: string, userId: number) => {
       throw new Error(`Spotify API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    return data.items;
-  } catch (error) {
-    console.error("Error fetching playlist tracks", error);
-    throw new Error(`Failed to fetch playlist tracks`);
+    const data: any = await response.json();
+    tracks.push(...data.items);
+    nextUrl = data.next;
   }
-}
+  console.log("trackssssssssssssssssssssssss");
+  console.log(tracks);
+  return tracks;
+};

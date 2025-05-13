@@ -1,4 +1,5 @@
 import { Box, Card, Typography, Button } from "@mui/material";
+import LoadingIndicator from "../LoadingIndicator";
 import { useTheme } from "@mui/material/styles";
 import { PlatformKey } from "../../constants";
 import { platformData } from "../../constants";
@@ -52,7 +53,7 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
                         {userData.spotify_display_name}
                     </Typography>
                 ) : (
-                    <Typography>Loading user data...</Typography>
+                    <LoadingIndicator text="Se încarcă utilizatorul..." />
                 )}
             </div>
             <Box textAlign="center">
@@ -86,10 +87,12 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
                                 </Button>
                                 {shownImages.has(playlist.id) && (
                                     <>
-                                        <Typography variant="body2">First three tracks:</Typography>
-                                        <Typography variant="body2">{playlist.tracks[0].track.artists[0].name + " - " + playlist.tracks[0].track.name}</Typography>
-                                        <Typography variant="body2">{playlist.tracks[1].track.artists[0].name + " - " + playlist.tracks[1].track.name}</Typography>
-                                        <Typography variant="body2">{playlist.tracks[2].track.artists[0].name + " - " + playlist.tracks[2].track.name}</Typography>
+                                        <Typography variant="body2">First five tracks:</Typography>
+                                        {playlist.tracks.slice(0, 5).map((trackItem: any, index: number) => (
+                                            <Typography key={index} variant="body2">
+                                                {trackItem.track.artists.map((artist: any) => artist.name).join(", ") + " - " + trackItem.track.name}
+                                            </Typography>
+                                        ))}
                                         <img src={playlist.images[0]?.url} alt="Playlist cover" style={{ width: "20%", height: "auto" }} />
                                     </>
                                 )}
@@ -97,7 +100,7 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
                         ))
                     )
                     : (
-                        < Typography > Loading playlists...</Typography>
+                        <LoadingIndicator text="Se încarcă playlisturile..." />
                     )
                 }
             </div >

@@ -45,7 +45,17 @@ export default function TransferWizard() {
                     setActiveSnackbar(true);
                     return;
                 }
-                window.location.href = `${BACKEND_URL}/${data.sourcePlatform}/login`;
+                switch (data.sourcePlatform) {
+                    case "spotify":
+                    case "ytMusic":
+                        window.location.href = `${BACKEND_URL}/${data.sourcePlatform}/login`;
+                        break;
+                    case "txt":
+                        navigate("/transfera/txt");
+                    default:
+                        break;
+                }
+
                 setActiveStep(activeStep + 1);
             },
             back: async () => {
