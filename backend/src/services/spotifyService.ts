@@ -2,8 +2,6 @@ import SpotifyWebApi from "spotify-web-api-node";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
-import e from "express";
-import { get } from "http";
 
 dotenv.config();
 
@@ -241,7 +239,5 @@ export const getPlaylistTracks = async (
     tracks.push(...data.items);
     nextUrl = data.next;
   }
-  console.log("trackssssssssssssssssssssssss");
-  console.log(tracks);
   return tracks;
 };
