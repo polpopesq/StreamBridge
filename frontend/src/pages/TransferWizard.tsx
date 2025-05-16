@@ -1,22 +1,24 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { Stepper, Step, StepLabel, Box, Card, CardContent } from "@mui/material";
 import SelectPlatform from "../components/wizardSteps/SelectPlatform";
 import SelectPlaylist from "../components/wizardSteps/SelectPlaylist";
-import { useParams } from "react-router-dom";
 import { BACKEND_URL, PlatformKey } from "../constants";
 import { SnackbarAlert } from "../components/SnackbarAlert";
+import { Playlist } from "@shared/types";
 
 const steps = ["Sursă", "Playlist", "Destinație"];
 
 export interface TransferData {
     sourcePlatform: PlatformKey | null;
-    selectedPlaylist: any | null;
+    selectedPlaylist: Playlist | null;
     destinationPlatform: PlatformKey | null;
 }
 
 export default function TransferWizard() {
-    const { sourcePlatform } = useParams<{ sourcePlatform?: PlatformKey }>();
+    const [searchParams] = useSearchParams();
+    const sourcePlatform = searchParams.get("source") as PlatformKey | null;
+    const destinationPlatform = searchParams.get("destination") as PlatformKey | null;
     const [activeStep, setActiveStep] = useState(sourcePlatform ? 1 : 0);
     const [activeSnackbar, setActiveSnackbar] = useState(false);
     const navigate = useNavigate();
@@ -35,6 +37,14 @@ export default function TransferWizard() {
         console.log(data);
     }, [data])
 
+    useEffect(() => {
+        const params = new URLSearchParams();
+        if (data.sourcePlatform) params.set("source", data.sourcePlatform);
+        if (data.destinationPlatform) params.set("destination", data.destinationPlatform);
+        navigate({ search: params.toString() }, { replace: true });
+    }, [data.sourcePlatform, data.destinationPlatform]);
+
+
     const wizardFunctions: Record<number, {
         next: () => Promise<void>;
         back: () => Promise<void>;
@@ -48,10 +58,11 @@ export default function TransferWizard() {
                 switch (data.sourcePlatform) {
                     case "spotify":
                     case "ytMusic":
-                        window.location.href = `${BACKEND_URL}/${data.sourcePlatform}/login`;
+                        window.location.href = `${BACKEND_URL}/${data.sourcePlatform}/login?context=source`;
                         break;
                     case "txt":
-                        navigate("/transfera/txt");
+                        navigate("/transfera?source=txt");
+                        break;
                     default:
                         break;
                 }
@@ -82,6 +93,52 @@ export default function TransferWizard() {
                     setActiveSnackbar(true);
                     return;
                 }
+
+                switch (data.destinationPlatform) {
+                    case "spotify":
+                    case "ytMusic":
+                        window.location.href = `${BACKEND_URL}/${data.destinationPlatform}/login?context=destination`;
+                        break;
+                    case "txt":
+                        navigate("/transfera?source=txt");
+                    default:
+                        break;
+                }
+
+                navigate("/loading",
+                    {
+                        state: {
+                            transferData: {
+                                sourcePlatform: data.sourcePlatform,
+                                selectedPlaylist: data.selectedPlaylist,
+                                destinationPlatform: data.destinationPlatform
+                            }
+                        }
+                    }
+                );
+
+                console.log(`${BACKEND_URL}/transfer`);
+
+                const transferResults = await fetch(`${BACKEND_URL}/transfer`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify(data),
+                    credentials: "include",
+                });
+                if (!transferResults.ok) {
+                    alert("Transfer failed. Please try again later.");
+                    return;
+                }
+                const transferData = await transferResults.json();
+                console.log(transferData);
+                navigate("/check-transfer", {
+                    state: {
+                        transferResults: transferResults
+                    }
+                });
+
             },
             back: async () => {
                 setActiveStep(activeStep - 1);
@@ -103,9 +160,9 @@ export default function TransferWizard() {
 
                 <Card sx={{ mt: 4 }}>
                     <CardContent>
-                        {activeStep === 0 && <SelectPlatform onChange={(platform) => updateData({ sourcePlatform: platform })} type="sursa" exclude={null} />}
-                        {activeStep === 1 && <SelectPlaylist sourcePlatform={data.sourcePlatform as PlatformKey} selectedPlaylist={data.selectedPlaylist} onChange={(playlist) => updateData({ selectedPlaylist: playlist })} />}
-                        {activeStep === 2 && <SelectPlatform onChange={(platform) => updateData({ destinationPlatform: platform })} type="destinatie" exclude={sourcePlatform || null} />}
+                        {activeStep === 0 && <SelectPlatform onChange={(platform) => updateData({ sourcePlatform: platform })} exclude={null} />}
+                        {activeStep === 1 && <SelectPlaylist sourcePlatform={data.sourcePlatform as PlatformKey} selectedPlaylist={data.selectedPlaylist} onChange={(playlist: Playlist) => updateData({ selectedPlaylist: playlist })} />}
+                        {activeStep === 2 && <SelectPlatform onChange={(platform) => updateData({ destinationPlatform: platform })} exclude={sourcePlatform || null} />}
                     </CardContent>
                     <button onClick={async () => { await wizardFunctions[activeStep].back() }} disabled={activeStep === 0}>Back</button>
                     <button onClick={async () => { await wizardFunctions[activeStep].next() }}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</button>

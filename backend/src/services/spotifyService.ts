@@ -2,10 +2,11 @@ import SpotifyWebApi from "spotify-web-api-node";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
+import { Playlist, TrackUI } from "@shared/types";
 
 dotenv.config();
 
-const tokenCache = new Map<number, { accessToken: string, expiresIn: number }>();
+const tokenCache = new Map<number, { accessToken: string, expiresAt: number }>();
 
 const createSpotifyApi = (): SpotifyWebApi => {
   return new SpotifyWebApi({
@@ -32,7 +33,7 @@ export const createLoginURL = (): { url: string; state: string } => {
 const getAccessToken = async (userId: number): Promise<string> => {
   //1. Poate e deja cache-uit
   const cached = tokenCache.get(userId);
-  if (cached && cached.expiresIn > Date.now()) {
+  if (cached && cached.expiresAt > Date.now()) {
     return cached.accessToken;
   }
 
@@ -42,7 +43,7 @@ const getAccessToken = async (userId: number): Promise<string> => {
     const refreshResult = await refreshAccessToken(refreshToken);
     if (refreshResult) {
       const { accessToken, expiresIn } = refreshResult;
-      tokenCache.set(userId, { accessToken, expiresIn });
+      tokenCache.set(userId, { accessToken, expiresAt: Date.now() + expiresIn * 1000 });
       return accessToken;
     }
     throw new Error("Token was not refreshed");
@@ -62,13 +63,17 @@ export const exchangeCodeForTokens = async (
   const data = await spotifyApi.authorizationCodeGrant(code);
   const accessToken = data.body.access_token;
   const expiresIn = data.body.expires_in;
-  tokenCache.set(userId, { accessToken, expiresIn });
+  tokenCache.set(userId, { accessToken, expiresAt: Date.now() + expiresIn * 1000 });
 
   const refreshToken = data.body.refresh_token;
-  await saveRefreshToken(userId, refreshToken);
+
+  const currentUser = await getCurrentUser(userId);
+  const spotifyUserId = currentUser.id;
+
+  await saveUserInfo(userId, refreshToken, spotifyUserId);
 };
 
-const saveRefreshToken = async (userId: number, refreshToken: string): Promise<void> => {
+const saveUserInfo = async (userId: number, refreshToken: string, spotifyUserId: string): Promise<void> => {
   try {
     const platformId = await getPlatformIdByName('spotify');
 
@@ -85,17 +90,17 @@ const saveRefreshToken = async (userId: number, refreshToken: string): Promise<v
     if (checkRes.rows.length > 0) {
       const updateQuery = `
         UPDATE linked_platforms 
-        SET refresh_token = $1
-        WHERE user_id = $2 AND platform_id = $3
+        SET refresh_token = $1, user_platform_id = $2
+        WHERE user_id = $3 AND platform_id = $4
       `;
-      await pool.query(updateQuery, [refreshToken, userId, platformId]);
+      await pool.query(updateQuery, [refreshToken, spotifyUserId, userId, platformId]);
     } else {
       const insertQuery = `
         INSERT INTO linked_platforms 
-        (user_id, platform_id, refresh_token)
-        VALUES ($1, $2, $3)
+        (user_id, platform_id, user_platform_id, refresh_token)
+        VALUES ($1, $2, $3, $4)
       `;
-      await pool.query(insertQuery, [userId, platformId, refreshToken]);
+      await pool.query(insertQuery, [userId, platformId, spotifyUserId, refreshToken]);
     }
   } catch (error) {
     console.error(error);
@@ -147,7 +152,6 @@ export const getCurrentUser = async (userId: number): Promise<{ display_name: st
   });
 
   if (!response.ok) {
-    console.log(await response.text());
     throw new Error(`Spotify API error: ${response.status}`);
   }
 
@@ -186,37 +190,18 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{
   };
 }
 
-export const getPlaylistsWithTracks = async (userId: number) => {
-  try {
-    const accessToken = await getAccessToken(userId);
+const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
+  id: playlist.id,
+  name: playlist.name,
+  imageUrl: playlist.images?.[0]?.url ?? "",
+  // we'll fetch tracks separately
+});
+const simplifyTrack = (item: any): TrackUI => ({
+  name: item.track.name,
+  artistsNames: item.track.artists.map((artist: any) => artist.name),
+});
 
-    const response = await fetch("https://api.spotify.com/v1/me/playlists", {
-      headers: {
-        "Authorization": `Bearer ${accessToken}`
-      }
-    });
-
-    if (!response.ok) {
-      console.error(await response.text());
-      throw new Error(`Spotify API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    const playlistsWithTracks = await Promise.all(
-      data.items.map(async (playlist: any) => {
-        const tracksData = await getPlaylistTracks(playlist.tracks.href, accessToken);
-        return { ...playlist, tracks: tracksData };
-      })
-    );
-    return playlistsWithTracks;
-  } catch (error) {
-    console.error("Error fetching playlists", error);
-    throw new Error(`Failed to fetch playlists`);
-  }
-};
-
-export const getPlaylistTracks = async (
+const getPlaylistTracks = async (
   href: string,
   accessToken: string
 ): Promise<any[]> => {
@@ -240,4 +225,46 @@ export const getPlaylistTracks = async (
     nextUrl = data.next;
   }
   return tracks;
+};
+
+export const getPlaylistsWithTracks = async (userId: number): Promise<Playlist[]> => {
+  try {
+    const accessToken = await getAccessToken(userId);
+
+    const response = await fetch("https://api.spotify.com/v1/me/playlists", {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Spotify API error:", errorText);
+      throw new Error(`Spotify API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    const simplifiedPlaylists = data.items.map((playlist: any) => simplifyPlaylist(playlist));
+
+    const playlistsWithTracks: Playlist[] = await Promise.all(
+      simplifiedPlaylists.map(async (playlist: any) => {
+        const tracksData = await getPlaylistTracks(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, accessToken);
+
+        const simplifiedTracks: TrackUI[] = tracksData
+          .filter((item: any) => item.track && item.track.id)
+          .map((item: any): TrackUI => simplifyTrack(item));
+
+        return {
+          ...playlist,
+          tracks: simplifiedTracks,
+        };
+      })
+    );
+
+    return playlistsWithTracks.filter((playlist) => playlist.tracks.length > 0);
+  } catch (error) {
+    console.error("Error fetching playlists", error);
+    throw new Error("Failed to fetch playlists");
+  }
 };

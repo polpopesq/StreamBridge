@@ -48,7 +48,7 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) =
   const userId = req.user?.user_id as number;
   try {
     const userData = await spotifyService.getCurrentUser(userId);
-    res.status(200).json({ "spotify_user_id": userData.id, "spotify_display_name": userData.display_name });
+    res.status(200).json({ "spotify_display_name": userData.display_name });
   } catch (error) {
     res.status(500).json({ "message": "Unexpected error fetching spotify user data." })
   }

@@ -11,8 +11,8 @@ export const SPOTIFY_PROFILE_URL = 'https://api.spotify.com/v1/me';
 export const SCOPE = 'user-read-private user-read-email';
 
 export enum SpotifyScopes {
-    PlaylistModifyPublic = "playlist-modify-public", //Allows modification of public playlists.
-    PlaylistModifyPrivate = "playlist-modify-private", //Allows modification of private playlists.
-    UserTopRead = "user-top-read", //Read access to a user's top artists and tracks.
-    UserLibraryModify = "user-library-modify", //Write/delete access to a user's \"Your Music\" library.
-  } 
+  PlaylistModifyPublic = "playlist-modify-public", //Allows modification of public playlists.
+  PlaylistModifyPrivate = "playlist-modify-private", //Allows modification of private playlists.
+  UserTopRead = "user-top-read", //Read access to a user's top artists and tracks.
+  UserLibraryModify = "user-library-modify", //Write/delete access to a user's \"Your Music\" library.
+}

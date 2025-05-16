@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import * as authService from "../services/authService";
 import { useState } from "react";
 import { useAuth } from "../services/AuthContext";
+import { SnackbarAlert } from "../components/SnackbarAlert";
 
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [activeSnackbar, setActiveSnackbar] = useState(false);
   const { setLoggedIn } = useAuth();
 
   const handleSubmit = async (event: React.FormEvent) => {
@@ -19,7 +21,8 @@ const LoginPage = () => {
       navigate("/");
     }
     catch (err) {
-      console.error("Login failed", err);
+      setActiveSnackbar(true);
+      console.error("Login failed:", err);
     }
   }
 
@@ -29,8 +32,25 @@ const LoginPage = () => {
         <Typography variant="h4" gutterBottom>
           Autentificare
         </Typography>
-        <TextField fullWidth label="Email" margin="normal" variant="outlined" />
-        <TextField fullWidth label="Parolă" type="password" margin="normal" variant="outlined" />
+        <TextField
+          fullWidth
+          label="Email"
+          margin="normal"
+          variant="outlined"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <TextField
+          fullWidth
+          label="Parolă"
+          type="password"
+          margin="normal"
+          variant="outlined"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
         <Button
           variant="contained"
           color="primary"
@@ -47,6 +67,11 @@ const LoginPage = () => {
           </Button>
         </Typography>
       </Box>
+      <SnackbarAlert
+        message="Autentificare eșuată"
+        activeSnackbar={activeSnackbar}
+        setActiveSnackbar={setActiveSnackbar}
+      />
     </Container>
   );
 };

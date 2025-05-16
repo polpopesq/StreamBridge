@@ -23,8 +23,6 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
   const token = tokenMiddleware.signJWT({ user_id: user.id });
 
-  console.log(token);
-
   res.cookie(AUTH_COOKIE, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",

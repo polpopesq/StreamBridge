@@ -1,6 +1,8 @@
 import dotenv from "dotenv";
 import { pool } from "../config/db";
 import crypto from "crypto";
+import { Playlist, TrackUI } from "@shared/types";
+
 
 dotenv.config();
 
@@ -46,7 +48,10 @@ export const exchangeCodeForTokens = async (code: string, userId: number): Promi
     const expiry = Date.now() + expires_in * 1000;
     tokenCache.set(userId, { accessToken: access_token, expiresIn: expiry });
 
-    await saveRefreshToken(userId, refresh_token);
+    const currentUser = await getCurrentUser(userId);
+    const ytUserId = currentUser.id;
+
+    await saveUserInfo(userId, refresh_token, ytUserId);
 };
 
 const getPlatformIdByName = async (platformName: string): Promise<number | null> => {
@@ -54,7 +59,11 @@ const getPlatformIdByName = async (platformName: string): Promise<number | null>
     return res.rows[0]?.id || null;
 };
 
-const saveRefreshToken = async (userId: number, refreshToken: string): Promise<void> => {
+const saveUserInfo = async (
+    userId: number,
+    refreshToken: string,
+    ytUserId: string
+): Promise<void> => {
     const platformId = await getPlatformIdByName("ytMusic");
     if (!platformId) throw new Error("Platform not found");
 
@@ -65,14 +74,17 @@ const saveRefreshToken = async (userId: number, refreshToken: string): Promise<v
 
     if (check.rows.length > 0) {
         await pool.query(
-            `UPDATE linked_platforms SET refresh_token = $1 WHERE user_id = $2 AND platform_id = $3`,
-            [refreshToken, userId, platformId]
+            `UPDATE linked_platforms 
+       SET refresh_token = $1, user_platform_id = $2 
+       WHERE user_id = $3 AND platform_id = $4`,
+            [refreshToken, ytUserId, userId, platformId]
         );
     } else {
         await pool.query(
-            `INSERT INTO linked_platforms (user_id, platform_id, refresh_token)
-       VALUES ($1, $2, $3)`,
-            [userId, platformId, refreshToken]
+            `INSERT INTO linked_platforms 
+       (user_id, platform_id, user_platform_id, refresh_token)
+       VALUES ($1, $2, $3, $4)`,
+            [userId, platformId, ytUserId, refreshToken]
         );
     }
 };
@@ -106,6 +118,23 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
     };
 };
 
+export const getCurrentUser = async (userId: number): Promise<{ display_name: string, id: string }> => {
+    const accessToken = await getAccessToken(userId);
+    const response = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json"
+        }
+    });
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error("YouTube API error:", errorText);
+        throw new Error(`YouTube API returned ${response.status}`);
+    }
+    const data = await response.json();
+    return { display_name: data.items[0].snippet.title, id: data.items[0].id };
+}
+
 export const getAccessToken = async (userId: number): Promise<string> => {
     const cached = tokenCache.get(userId);
     if (cached && cached.expiresIn > Date.now()) return cached.accessToken;
@@ -119,3 +148,84 @@ export const getAccessToken = async (userId: number): Promise<string> => {
     tokenCache.set(userId, refreshed);
     return refreshed.accessToken;
 };
+
+const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
+    id: playlist.id,
+    name: playlist.snippet.title,
+    imageUrl: playlist.snippet.thumbnails.default.url ?? "",
+    // we'll fetch tracks separately
+});
+const simplifyTrack = (item: any): TrackUI => ({
+    name: item.snippet.title,
+    artistsNames: [""],// YouTube doesn't provide artist info
+});
+
+//TODO
+const getTrackForAI = (item: any) => ({
+    name: item.snippet.title,
+    channel: item.snippet.videoOwnerChannelTitle,
+    description: item.snippet.description,
+});
+
+export const getPlaylistsWithTracks = async (userId: number): Promise<Playlist[]> => {
+    const accessToken = await getAccessToken(userId);
+    const response = await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet,contentDetails&mine=true&maxResults=50`, {
+        headers: {
+            "Authorization": `Bearer ${accessToken}`,
+            "Accept": "application/json"
+        }
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        console.error("YouTube API error:", errorText);
+        throw new Error(`YouTube API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const simplifiedPlaylists = data.items.map((playlist: any) => simplifyPlaylist(playlist));
+
+    const playlistsWithTracks = await Promise.all(
+        simplifiedPlaylists.map(async (playlist: any) => {
+            const tracksData = await getTracksForPlaylist(playlist.id, accessToken);
+
+            const simplifiedTracks: TrackUI[] = tracksData
+                .map((item: any): TrackUI => simplifyTrack(item));
+
+            return {
+                ...playlist,
+                tracks: simplifiedTracks
+            };
+        })
+    );
+
+    return playlistsWithTracks.filter((playlist: any) => playlist.tracks.length > 0);
+};
+
+
+export const getTracksForPlaylist = async (playlistId: string, accessToken: string): Promise<any[]> => {
+    let allItems: any[] = [];
+    let nextPageToken = "";
+
+    do {
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&pageToken=${nextPageToken}`, {
+            headers: {
+                "Authorization": `Bearer ${accessToken}`,
+                "Accept": "application/json"
+            }
+        });
+
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`Error fetching tracks for playlist ${playlistId}:`, errorText);
+            throw new Error(`YouTube playlistItems API returned ${res.status}`);
+        }
+
+        const data = await res.json();
+        allItems = allItems.concat(data.items);
+        nextPageToken = data.nextPageToken || "";
+    } while (nextPageToken);
+
+    return allItems;
+};
+

@@ -1,5 +1,5 @@
 import React from "react";
-import { Snackbar, Slide, SlideProps, Typography } from "@mui/material";
+import { Snackbar, Slide, SlideProps } from "@mui/material";
 
 interface SnackbarAlertProps {
     message: string;

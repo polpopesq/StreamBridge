@@ -16,6 +16,7 @@ export const SpotifyService = {
         try {
             const res = await fetch(`${BACKEND_URL}/spotify/playlists`, { credentials: "include" });
             const data = await res.json();
+            console.log("Playlists Spotify:", data);
             return data;
         } catch (error) {
             console.error(error);

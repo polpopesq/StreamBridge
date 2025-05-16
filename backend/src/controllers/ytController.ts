@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
-import * as youtubeService from "../services/ytService";
+import * as ytService from "../services/ytService";
 
 export const login = (req: Request, res: Response) => {
-    const { url, state } = youtubeService.createLoginURL();
+    const { url, state } = ytService.createLoginURL();
     res.cookie("oauth_state", state, { httpOnly: true, secure: true });
     res.redirect(url);
 };
@@ -21,7 +21,28 @@ export const callback = async (req: AuthenticatedRequest, res: Response): Promis
     const userId = req.user?.user_id;
     if (!userId) return res.status(401).send("Not authenticated");
 
-    await youtubeService.exchangeCodeForTokens(code, userId);
+    await ytService.exchangeCodeForTokens(code, userId);
     res.clearCookie("oauth_state");
-    res.redirect(`${process.env.FRONTEND_URL}/transfera/youtube`);
+    res.redirect(`${process.env.FRONTEND_URL}/transfera/ytMusic`);
 };
+
+export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.user_id as number;
+    try {
+        const playlists = await ytService.getPlaylistsWithTracks(userId);
+
+        res.status(200).json(playlists);
+    } catch (error) {
+        res.status(500).json({ "message": "Unexpected error fetching youtube user playlists." })
+    }
+}
+
+export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.user_id as number;
+    try {
+        const userData = await ytService.getCurrentUser(userId);
+        res.status(200).json({ "youtube_display_name": userData.display_name });
+    } catch (error) {
+        res.status(500).json({ "message": "Unexpected error fetching youtube user data." })
+    }
+}

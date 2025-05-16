@@ -13,6 +13,7 @@ import AccountPage from "./pages/AccountPage";
 import { isLoggedIn } from "./services/authService";
 import { useAuth } from "./services/AuthContext";
 import { ProtectedRoute } from "./services/ProtectedRoute";
+import LoadingScreen from "./pages/LoadingScreen";
 
 function App() {
   const { loggedIn, setLoggedIn } = useAuth();
@@ -53,6 +54,7 @@ function App() {
             {<ProtectedRoute isAuthenticated={loggedIn}>
               <AccountPage />
             </ProtectedRoute>} />
+          <Route path="/loading" element={<LoadingScreen />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

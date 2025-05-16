@@ -3,36 +3,42 @@ import LoadingIndicator from "../LoadingIndicator";
 import { useTheme } from "@mui/material/styles";
 import { PlatformKey } from "../../constants";
 import { platformData } from "../../constants";
-import { SpotifyService } from "../../services/spotifyService"
 import { useState, useEffect } from "react";
+import { PlaylistFetcher, UserFetcher } from "../../services/fetchers";
+import { TrackUI } from "@shared/types";
+import { Playlist } from "@shared/types";
 
 interface SelectPlaylistProps {
     sourcePlatform: PlatformKey;
-    selectedPlaylist: any | null;
-    onChange: (value: PlatformKey) => void;
+    selectedPlaylist: Playlist | null;
+    onChange: (value: Playlist) => void;
 }
 
 const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selectedPlaylist, onChange }) => {
     const theme = useTheme();
     const [userData, setUserData] = useState<{ spotify_user_id: string, spotify_display_name: string } | null>(null);
-    const [playlists, setPlaylists] = useState<any>();
+    const [playlists, setPlaylists] = useState<Playlist[]>([]);
     const [shownImages, setShownImages] = useState<Set<string>>(new Set());
 
     useEffect(() => {
-        const fetchUser = async () => {
-            const data = await SpotifyService.getUser();
-            if (data) setUserData(data);
+        if (!sourcePlatform) return;
+
+        const fetch = async () => {
+            const fetchUser = UserFetcher[sourcePlatform];
+            const fetchPlaylists = PlaylistFetcher[sourcePlatform];
+
+            const user = await fetchUser?.();
+            const playlistData = await fetchPlaylists?.();
+
+            console.log("User data:", user);
+            console.log("Playlist data:", playlistData);
+
+            setUserData(user);
+            setPlaylists(playlistData || []);
         };
 
-        const fetchPlaylists = async () => {
-            const playlists = await SpotifyService.getUserPlaylists();
-            console.log(playlists);
-            setPlaylists(playlists);
-        }
-
-        fetchUser();
-        fetchPlaylists();
-    }, []);
+        fetch();
+    }, [sourcePlatform]);
 
     const toggleImage = (id: string) => {
         setShownImages(prev => {
@@ -62,7 +68,7 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
             <div>
                 {playlists ?
                     (
-                        playlists.map((playlist: any) => (
+                        playlists.map((playlist: Playlist) => (
                             <Card
                                 key={playlist.id}
                                 onClick={() => onChange(playlist)}
@@ -80,7 +86,6 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
                                 }}
                             >
                                 <Typography variant="h6">{playlist.name}</Typography>
-                                <Typography variant="body2">{playlist.description}</Typography>
                                 <Typography variant="body2">Number of tracks: {playlist.tracks.length}</Typography>
                                 <Button onClick={(e) => { e.stopPropagation(); toggleImage(playlist.id); }}>
                                     {shownImages.has(playlist.id) ? "Less info" : "More info"}
@@ -88,12 +93,12 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
                                 {shownImages.has(playlist.id) && (
                                     <>
                                         <Typography variant="body2">First five tracks:</Typography>
-                                        {playlist.tracks.slice(0, 5).map((trackItem: any, index: number) => (
+                                        {playlist.tracks.slice(0, 5).map((trackItem: TrackUI, index: number) => (
                                             <Typography key={index} variant="body2">
-                                                {trackItem.track.artists.map((artist: any) => artist.name).join(", ") + " - " + trackItem.track.name}
+                                                {`${trackItem.artistsNames[0] !== "" ? trackItem.artistsNames.join(", ") + " - " : ""}${trackItem.name}`}
                                             </Typography>
                                         ))}
-                                        <img src={playlist.images[0]?.url} alt="Playlist cover" style={{ width: "20%", height: "auto" }} />
+                                        <img src={playlist.imageUrl} alt="Playlist cover" style={{ width: "20%", height: "auto" }} />
                                     </>
                                 )}
                             </Card>

@@ -8,13 +8,13 @@ const RegisterPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const handleSubmit = async (event : React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     try {
       await authService.register(email, password);
       navigate("/login");
     }
-    catch(err) {
+    catch (err) {
       console.error("Registration failed", err);
     }
   }
@@ -25,15 +25,31 @@ const RegisterPage = () => {
         <Typography variant="h4" gutterBottom>
           Creează un cont
         </Typography>
-        <TextField fullWidth label="Email" margin="normal" variant="outlined" />
-        <TextField fullWidth label="Parolă" type="password" margin="normal" variant="outlined" />
-        <Button 
-        variant="contained"
-        color="primary"
-        fullWidth
-        size="large"
-        sx={{ mt: 2 }}
-        onClick={handleSubmit}>
+        <TextField
+          fullWidth
+          label="Email"
+          margin="normal"
+          variant="outlined"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
+        <TextField
+          fullWidth
+          label="Parolă"
+          type="password"
+          margin="normal"
+          variant="outlined"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+        <Button
+          variant="contained"
+          color="primary"
+          fullWidth
+          size="large"
+          sx={{ mt: 2 }}
+          onClick={handleSubmit}>
           Înregistrează-te
         </Button>
         <Typography variant="body2" mt={2}>

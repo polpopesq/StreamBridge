@@ -27,6 +27,8 @@ export const login = async (email: string, password: string): Promise<void> => {
         body: JSON.stringify({ email, password }),
     });
 
+    console.log(response);
+
     if (!response.ok) {
         throw new Error('Login failed');
     }
