@@ -9,7 +9,7 @@ interface SelectSourceProps {
 }
 
 const SelectSource: React.FC<SelectSourceProps> = ({ onChange, exclude }) => {
-    const [platform, setPlatform] = useState("");
+    const [platform, setPlatform] = useState<PlatformKey | null>(null);
     useEffect(() => {
         const platformKey = platform as PlatformKey;
         onChange(platformKey);

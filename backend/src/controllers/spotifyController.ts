@@ -9,8 +9,11 @@ dotenv.config();
 //aceasta ruta creeaza un url pe care utilizatorul este directionat sa se logheze si sa dea permisiuni
 //daca accepta, e redirectionat catre redirect uri
 export const login = (req: Request, res: Response): void => {
-  const { url, state } = spotifyService.createLoginURL();
-  res.cookie("oauth_state", state, { httpOnly: true, secure: true });
+  const step = req.query.step as string || "0";
+  const { url, state } = spotifyService.createLoginURL(step);
+
+  const csrfToken = state.split("__")[0];
+  res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
   res.redirect(url);
 };
 
@@ -23,13 +26,21 @@ export const callback = async (
   const returnedState = req.query.state;
   const originalState = req.cookies?.oauth_state;
 
-  if (!originalState || !returnedState || returnedState !== originalState) {
-    res.status(403).send("Invalid or missing state parameter");
+  if (!returnedState || !originalState) {
+    res.status(403).send("Missing state.");
     return;
   }
 
   if (!code || typeof code !== "string") {
     res.status(403).send("Invalid Spotify code.");
+  }
+
+  const [csrfToken, step] = (returnedState as string).split("__");
+  const stepNumber = parseInt(step);
+
+  if (csrfToken !== originalState) {
+    res.status(403).send("Invalid state.");
+    return;
   }
 
   const userId = req.user?.user_id;
@@ -39,9 +50,8 @@ export const callback = async (
   }
 
   await spotifyService.exchangeCodeForTokens(code, userId);
-
   res.clearCookie("oauth_state");
-  res.redirect(`${process.env.FRONTEND_URL}/transfera/spotify`);
+  res.redirect(`${process.env.FRONTEND_URL}/transfera/?step=${stepNumber + 1}`);
 };
 
 export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) => {

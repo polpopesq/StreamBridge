@@ -3,8 +3,11 @@ import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
 import * as ytService from "../services/ytService";
 
 export const login = (req: Request, res: Response) => {
-    const { url, state } = ytService.createLoginURL();
-    res.cookie("oauth_state", state, { httpOnly: true, secure: true });
+    const step = req.query.step as string || "0";
+    const { url, state } = ytService.createLoginURL(step);
+    const csrfToken = state.split("__")[0];
+
+    res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
     res.redirect(url);
 };
 
@@ -13,17 +16,28 @@ export const callback = async (req: AuthenticatedRequest, res: Response): Promis
     const state = req.query.state;
     const originalState = req.cookies?.oauth_state;
 
-    if (!state || state !== originalState) {
-        res.status(403).send("Invalid state");
+    if (!state || !originalState) {
+        res.status(403).send("Missing state");
+        return;
+    }
+
+    const [csrfToken, step] = (state as string).split("__");
+    const stepNumber = parseInt(step);
+
+    if (csrfToken !== originalState) {
+        res.status(403).send("Invalid state.");
         return;
     }
 
     const userId = req.user?.user_id;
-    if (!userId) return res.status(401).send("Not authenticated");
+    if (!userId) {
+        res.status(401).json({ message: "User not authenticated" });
+        return;
+    }
 
     await ytService.exchangeCodeForTokens(code, userId);
     res.clearCookie("oauth_state");
-    res.redirect(`${process.env.FRONTEND_URL}/transfera/ytMusic`);
+    res.redirect(`${process.env.FRONTEND_URL}/transfera?step=${stepNumber + 1}`);
 };
 
 export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {

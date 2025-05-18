@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Stepper, Step, StepLabel, Box, Card, CardContent } from "@mui/material";
 import SelectPlatform from "../components/wizardSteps/SelectPlatform";
@@ -16,136 +16,103 @@ export interface TransferData {
 }
 
 export default function TransferWizard() {
-    const [searchParams] = useSearchParams();
-    const sourcePlatform = searchParams.get("source") as PlatformKey | null;
-    const destinationPlatform = searchParams.get("destination") as PlatformKey | null;
-    const [activeStep, setActiveStep] = useState(sourcePlatform ? 1 : 0);
+    const [searchParams, setSearchParams] = useSearchParams();
+    const stepParam = parseInt(searchParams.get("step") || "0", 10);
+    const [activeStep, setActiveStep] = useState(stepParam);
     const [activeSnackbar, setActiveSnackbar] = useState(false);
     const navigate = useNavigate();
 
     const [data, setData] = useState<TransferData>({
-        sourcePlatform: sourcePlatform || null,
+        sourcePlatform: null,
         selectedPlaylist: null,
         destinationPlatform: null,
     });
 
-    const updateData = (partial: Partial<TransferData>) => {
-        setData((prev) => ({ ...prev, ...partial }));
-    }
+    useEffect(() => {
+        const currentParams = new URLSearchParams(searchParams);
+        currentParams.set("step", activeStep.toString());
+        setSearchParams(currentParams, { replace: true });
+    }, [activeStep]);
 
     useEffect(() => {
-        console.log(data);
-    }, [data])
-
-    useEffect(() => {
-        const params = new URLSearchParams();
-        if (data.sourcePlatform) params.set("source", data.sourcePlatform);
-        if (data.destinationPlatform) params.set("destination", data.destinationPlatform);
-        navigate({ search: params.toString() }, { replace: true });
-    }, [data.sourcePlatform, data.destinationPlatform]);
-
-
-    const wizardFunctions: Record<number, {
-        next: () => Promise<void>;
-        back: () => Promise<void>;
-    }> = {
-        0: {
-            next: async () => {
-                if (!data.sourcePlatform) {
-                    setActiveSnackbar(true);
-                    return;
-                }
-                switch (data.sourcePlatform) {
-                    case "spotify":
-                    case "ytMusic":
-                        window.location.href = `${BACKEND_URL}/${data.sourcePlatform}/login?context=source`;
-                        break;
-                    case "txt":
-                        navigate("/transfera?source=txt");
-                        break;
-                    default:
-                        break;
-                }
-
-                setActiveStep(activeStep + 1);
-            },
-            back: async () => {
-                setActiveStep(activeStep - 1);
-            }
-        },
-        1: {
-            next: async () => {
-                if (!data.sourcePlatform || !data.selectedPlaylist) {
-                    setActiveSnackbar(true);
-                    return;
-                }
-                setActiveStep(activeStep + 1);
-            },
-            back: async () => {
-                setData((prev) => ({ ...prev, sourcePlatform: null }));
-                navigate("/transfera");
-                setActiveStep(activeStep - 1);
-            }
-        },
-        2: {
-            next: async () => {
-                if (!data.destinationPlatform) {
-                    setActiveSnackbar(true);
-                    return;
-                }
-
-                switch (data.destinationPlatform) {
-                    case "spotify":
-                    case "ytMusic":
-                        window.location.href = `${BACKEND_URL}/${data.destinationPlatform}/login?context=destination`;
-                        break;
-                    case "txt":
-                        navigate("/transfera?source=txt");
-                    default:
-                        break;
-                }
-
-                navigate("/loading",
-                    {
-                        state: {
-                            transferData: {
-                                sourcePlatform: data.sourcePlatform,
-                                selectedPlaylist: data.selectedPlaylist,
-                                destinationPlatform: data.destinationPlatform
-                            }
-                        }
-                    }
-                );
-
-                console.log(`${BACKEND_URL}/transfer`);
-
-                const transferResults = await fetch(`${BACKEND_URL}/transfer`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify(data),
-                    credentials: "include",
-                });
-                if (!transferResults.ok) {
-                    alert("Transfer failed. Please try again later.");
-                    return;
-                }
-                const transferData = await transferResults.json();
-                console.log(transferData);
-                navigate("/check-transfer", {
-                    state: {
-                        transferResults: transferResults
-                    }
-                });
-
-            },
-            back: async () => {
-                setActiveStep(activeStep - 1);
+        if (activeStep > 0) {
+            const saved = localStorage.getItem("transferData");
+            if (saved) {
+                setData(JSON.parse(saved));
+                console.log("Transfer data loaded from localStorage:", JSON.parse(saved));
             }
         }
+        else {
+            localStorage.removeItem("transferData");
+        }
+        if (activeStep === 3) {
+            navigate("/loading", {
+                state: { transferData: data }
+            });
+            // try {
+            //     const res = await fetch(`${BACKEND_URL}/transfer`, {
+            //         method: "POST",
+            //         headers: { "Content-Type": "application/json" },
+            //         body: JSON.stringify(data),
+            //         credentials: "include",
+            //     });
+            //     if (!res.ok) throw new Error("Transfer failed");
+
+            //     const results = await res.json();
+            //     navigate("/check-transfer", {
+            //         state: { transferResults: results },
+            //     });
+            // } catch (err) {
+            //     alert("Transferul a eșuat. Încearcă din nou.");
+            // }
+            // return;
+        }
+    }, []);
+
+    const updateData = (partial: Partial<TransferData>) => {
+        setData((prev) => ({ ...prev, ...partial }));
     };
 
+    const redirectToOAuth = (platform: PlatformKey, step: number) => {
+        window.location.href = `${BACKEND_URL}/${platform}/login?step=${step}`;
+    };
+
+    const handleNext = async () => {
+        switch (activeStep) {
+            case 0:
+                if (!data.sourcePlatform) return setActiveSnackbar(true);
+                if (["spotify", "ytMusic"].includes(data.sourcePlatform)) {
+                    localStorage.setItem("transferData", JSON.stringify(data));
+                    return redirectToOAuth(data.sourcePlatform, 0);
+                }
+                if (data.sourcePlatform === "txt") {
+                    return navigate("/transfera?source=txt");
+                }
+                break;
+            case 1:
+                if (!data.selectedPlaylist) return setActiveSnackbar(true);
+                break;
+            case 2:
+                if (!data.destinationPlatform) return setActiveSnackbar(true);
+                if (["spotify", "ytMusic"].includes(data.destinationPlatform)) {
+                    localStorage.setItem("transferData", JSON.stringify(data));
+                    return redirectToOAuth(data.destinationPlatform, 2);
+                }
+                if (data.destinationPlatform === "txt") {
+                    return navigate("/transfera?destination=txt");
+                }
+        }
+
+        setActiveStep((prev) => prev + 1);
+    };
+
+    const handleBack = () => {
+        if (activeStep === 1) {
+            updateData({ sourcePlatform: null });
+            navigate("/transfera");
+        }
+        setActiveStep((prev) => prev - 1);
+    };
 
     return (
         <>
@@ -160,19 +127,40 @@ export default function TransferWizard() {
 
                 <Card sx={{ mt: 4 }}>
                     <CardContent>
-                        {activeStep === 0 && <SelectPlatform onChange={(platform) => updateData({ sourcePlatform: platform })} exclude={null} />}
-                        {activeStep === 1 && <SelectPlaylist sourcePlatform={data.sourcePlatform as PlatformKey} selectedPlaylist={data.selectedPlaylist} onChange={(playlist: Playlist) => updateData({ selectedPlaylist: playlist })} />}
-                        {activeStep === 2 && <SelectPlatform onChange={(platform) => updateData({ destinationPlatform: platform })} exclude={sourcePlatform || null} />}
+                        {activeStep === 0 && (
+                            <SelectPlatform
+                                onChange={(platform) => updateData({ sourcePlatform: platform })}
+                                exclude={null}
+                            />
+                        )}
+                        {activeStep === 1 && (
+                            <SelectPlaylist
+                                onChange={(playlist: Playlist) => updateData({ selectedPlaylist: playlist })}
+                            />
+                        )}
+                        {activeStep === 2 && (
+                            <SelectPlatform
+                                onChange={(platform) => updateData({ destinationPlatform: platform })}
+                                exclude={data.sourcePlatform}
+                            />
+                        )}
                     </CardContent>
-                    <button onClick={async () => { await wizardFunctions[activeStep].back() }} disabled={activeStep === 0}>Back</button>
-                    <button onClick={async () => { await wizardFunctions[activeStep].next() }}>{activeStep === steps.length - 1 ? "Finish" : "Next"}</button>
+                    <Box sx={{ display: "flex", justifyContent: "space-between", p: 2 }}>
+                        <button onClick={handleBack} disabled={activeStep === 0}>Înapoi</button>
+                        <button onClick={handleNext}>{activeStep === steps.length - 1 ? "Finalizare" : "Următorul"}</button>
+                    </Box>
                 </Card>
             </Box>
+
             <SnackbarAlert
-                message={activeStep === 0 || activeStep === 2 ? "Please select a platform" : "Please select a playlist"}
+                message={
+                    activeStep === 1
+                        ? "Selectează un playlist"
+                        : "Selectează o platformă"
+                }
                 activeSnackbar={activeSnackbar}
                 setActiveSnackbar={setActiveSnackbar}
             />
         </>
     );
-};
+}

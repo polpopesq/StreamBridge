@@ -9,16 +9,16 @@ import { TrackUI } from "@shared/types";
 import { Playlist } from "@shared/types";
 
 interface SelectPlaylistProps {
-    sourcePlatform: PlatformKey;
-    selectedPlaylist: Playlist | null;
     onChange: (value: Playlist) => void;
 }
 
-const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selectedPlaylist, onChange }) => {
+const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ onChange }) => {
     const theme = useTheme();
+    const sourcePlatform = JSON.parse(localStorage.getItem("transferData") || "{}").sourcePlatform as PlatformKey;
     const [userData, setUserData] = useState<{ spotify_user_id: string, spotify_display_name: string } | null>(null);
     const [playlists, setPlaylists] = useState<Playlist[]>([]);
     const [shownImages, setShownImages] = useState<Set<string>>(new Set());
+    const [selectedPlaylist, setSelectedPlaylist] = useState<Playlist | null>(null);
 
     useEffect(() => {
         if (!sourcePlatform) return;
@@ -71,15 +71,15 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ sourcePlatform, selecte
                         playlists.map((playlist: Playlist) => (
                             <Card
                                 key={playlist.id}
-                                onClick={() => onChange(playlist)}
+                                onClick={() => [onChange(playlist), setSelectedPlaylist(playlist)]}
                                 sx={{
                                     mb: 2,
                                     p: 2,
                                     cursor: "pointer",
-                                    backgroundColor: selectedPlaylist && playlist.id === selectedPlaylist.id
+                                    backgroundColor: selectedPlaylist && playlist.id === selectedPlaylist?.id
                                         ? theme.palette.action.selected
                                         : theme.palette.background.paper,
-                                    border: selectedPlaylist && playlist.id === selectedPlaylist.id
+                                    border: selectedPlaylist && playlist.id === selectedPlaylist?.id
                                         ? `2px solid ${theme.palette.primary.main}`
                                         : "1px solid #ccc",
                                     transition: "background-color 0.3s, border 0.3s"

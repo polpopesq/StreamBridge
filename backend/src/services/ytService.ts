@@ -12,8 +12,9 @@ const scopes = [
     "https://www.googleapis.com/auth/youtube.readonly",
 ];
 
-export const createLoginURL = (): { url: string; state: string } => {
-    const state = crypto.randomBytes(16).toString("hex");
+export const createLoginURL = (step: string): { url: string; state: string } => {
+    const csrfToken = crypto.randomBytes(16).toString("hex");
+    const state = `${csrfToken}__${step}`;
     const query = new URLSearchParams({
         client_id: process.env.YT_CLIENT_ID!,
         redirect_uri: process.env.YT_REDIRECT_URI!,

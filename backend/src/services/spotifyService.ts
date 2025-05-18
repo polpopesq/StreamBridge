@@ -24,8 +24,9 @@ const scopes = [
   "user-read-email"
 ];
 
-export const createLoginURL = (): { url: string; state: string } => {
-  const state = crypto.randomBytes(16).toString("hex");
+export const createLoginURL = (step: string): { url: string; state: string } => {
+  const csrfToken = crypto.randomBytes(16).toString("hex");
+  const state = `${csrfToken}__${step}`;
   const url = createSpotifyApi().createAuthorizeURL(scopes, state, true);
   return { url, state };
 };
