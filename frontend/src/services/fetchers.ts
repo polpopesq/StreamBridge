@@ -1,11 +1,11 @@
 import { SpotifyService } from "./spotifyService";
-import { YtService } from "./ytService";
+import { YoutubeService } from "./youtubeService";
 import { PlatformKey } from "../constants";
 import { Playlist } from "@shared/types";
 
 export const PlaylistFetcher: Record<PlatformKey, () => Promise<Playlist[] | null>> = {
     "spotify": SpotifyService.getUserPlaylists,
-    "ytMusic": YtService.getUserPlaylists,
+    "youtube": YoutubeService.getUserPlaylists,
     "txt": async () => {
         return null;
     }
@@ -13,7 +13,7 @@ export const PlaylistFetcher: Record<PlatformKey, () => Promise<Playlist[] | nul
 
 export const UserFetcher: Record<PlatformKey, () => Promise<any | null>> = {
     "spotify": SpotifyService.getUser,
-    "ytMusic": YtService.getUser,
+    "youtube": YoutubeService.getUser,
     "txt": async () => {
         return null;
     }

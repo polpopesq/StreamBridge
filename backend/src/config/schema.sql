@@ -1,56 +1,72 @@
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
-    password VARCHAR(255) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS platforms (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(255) UNIQUE NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS linked_platforms (
-    id SERIAL PRIMARY KEY,
-    user_id INT NOT NULL,
-    platform_id INT NOT NULL,
-    user_platform_id VARCHAR(255),
-    refresh_token VARCHAR(255) NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE
+    password VARCHAR(255) NOT NULL,
+    youtube_id VARCHAR(255) UNIQUE,
+    spotify_id VARCHAR(255) UNIQUE,
+    youtube_refresh_token VARCHAR(255),
+    spotify_refresh_token VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS playlists (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    user_id INT NOT NULL,
-    platform_id INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-    FOREIGN KEY (platform_id) REFERENCES platforms(id) ON DELETE CASCADE
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    youtube_id VARCHAR(255) UNIQUE,
+    spotify_id VARCHAR(255) UNIQUE,
+    image_url VARCHAR(255),
+    public BOOLEAN DEFAULT FALSE
 );
 
-CREATE TABLE IF NOT EXISTS artists (
+CREATE TABLE IF NOT EXISTS tracks (
     id SERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
-    genre VARCHAR(255) NOT NULL
+    artists_names VARCHAR(255),
+    youtube_id VARCHAR(255) UNIQUE,
+    spotify_id VARCHAR(255) UNIQUE,
+    channel_name VARCHAR(255)
 );
 
-CREATE TABLE IF NOT EXISTS songs (
+CREATE TABLE IF NOT EXISTS playlist_tracks (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(255) NOT NULL,
-    artist_id INT NOT NULL,
-    FOREIGN KEY (artist_id) REFERENCES artists(id) ON DELETE CASCADE
+    playlist_id INTEGER REFERENCES playlists(id) ON DELETE CASCADE,
+    track_id INTEGER REFERENCES tracks(id) ON DELETE CASCADE,
+    position INTEGER NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS playlist_songs (
+CREATE TABLE IF NOT EXISTS transfers (
     id SERIAL PRIMARY KEY,
-    playlist_id INT NOT NULL,
-    song_id INT NOT NULL,
-    FOREIGN KEY (playlist_id) REFERENCES playlists(id) ON DELETE CASCADE,
-    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+    source_platform VARCHAR(50),
+    destination_platform VARCHAR(50),
+    playlist_id INTEGER REFERENCES playlists(id) ON DELETE SET NULL,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-INSERT INTO platforms (name) VALUES
-  ('spotify'),
-  ('ytMusic'),
-  ('txt')
-ON CONFLICT (name) DO NOTHING;
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_playlist_id ON playlist_tracks (playlist_id);
+CREATE INDEX IF NOT EXISTS idx_playlist_tracks_track_id ON playlist_tracks (track_id);
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'unique_spotify_playlist_per_user'
+  ) THEN
+    ALTER TABLE playlists
+    ADD CONSTRAINT unique_spotify_playlist_per_user UNIQUE (spotify_id, user_id);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'unique_youtube_playlist_per_user'
+  ) THEN
+    ALTER TABLE playlists
+    ADD CONSTRAINT unique_youtube_playlist_per_user UNIQUE (youtube_id, user_id);
+  END IF;
+END $$;

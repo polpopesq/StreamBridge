@@ -68,7 +68,7 @@ export const exchangeCodeForTokens = async (
 
   const refreshToken = data.body.refresh_token;
 
-  const currentUser = await getCurrentUser(userId);
+  const currentUser = await getSpotifyUser(userId);
   const spotifyUserId = currentUser.id;
 
   await saveUserInfo(userId, refreshToken, spotifyUserId);
@@ -76,33 +76,17 @@ export const exchangeCodeForTokens = async (
 
 const saveUserInfo = async (userId: number, refreshToken: string, spotifyUserId: string): Promise<void> => {
   try {
-    const platformId = await getPlatformIdByName('spotify');
-
-    if (!platformId) {
-      throw new Error("Platform name 'spotify' not found in the database.")
-    }
-
-    const checkQuery = `
-      SELECT id FROM linked_platforms 
-      WHERE user_id = $1 AND platform_id = $2
-    `;
-    const checkRes = await pool.query(checkQuery, [userId, platformId]);
-
-    if (checkRes.rows.length > 0) {
-      const updateQuery = `
-        UPDATE linked_platforms 
-        SET refresh_token = $1, user_platform_id = $2
-        WHERE user_id = $3 AND platform_id = $4
+    const updateQuery = `
+        UPDATE users 
+        SET spotify_refresh_token = $1, spotify_id = $2
+        WHERE id = $3 
       `;
-      await pool.query(updateQuery, [refreshToken, spotifyUserId, userId, platformId]);
-    } else {
-      const insertQuery = `
-        INSERT INTO linked_platforms 
-        (user_id, platform_id, user_platform_id, refresh_token)
-        VALUES ($1, $2, $3, $4)
-      `;
-      await pool.query(insertQuery, [userId, platformId, spotifyUserId, refreshToken]);
-    }
+    await pool.query(updateQuery, [refreshToken, spotifyUserId, userId]);
+
+    const userPlaylists = await getPlaylistsWithTracksFromSpotify(userId);
+    await Promise.all(
+      userPlaylists.map((playlist) => savePlaylist(userId, playlist))
+    );
   } catch (error) {
     console.error(error);
   }
@@ -110,40 +94,24 @@ const saveUserInfo = async (userId: number, refreshToken: string, spotifyUserId:
 
 const getRefreshTokenFromDB = async (userId: number): Promise<string | null> => {
   try {
-    const platformId = await getPlatformIdByName("spotify");
-
-    if (!platformId) {
-      console.error("Platform name 'spotify' not found in the database.")
-      return null;
-    }
-
     const tokenRes = await pool.query(
-      `SELECT refresh_token FROM linked_platforms 
-       WHERE user_id = $1 AND platform_id = $2`,
-      [userId, platformId]
+      `SELECT spotify_refresh_token FROM users 
+       WHERE id = $1`,
+      [userId]
     );
 
     if (tokenRes.rows.length === 0) {
       return null;
     }
 
-    return tokenRes.rows[0].refresh_token;
+    return tokenRes.rows[0].spotify_refresh_token;
   } catch (error) {
     console.error('Error loading tokens:', error);
     return null;
   }
 };
 
-const getPlatformIdByName = async (platformName: string): Promise<number | null> => {
-  const platformRes = await pool.query(
-    'SELECT id FROM platforms WHERE name = $1',
-    [platformName]
-  );
-
-  return platformRes.rows.length > 0 ? platformRes.rows[0].id : null;
-}
-
-export const getCurrentUser = async (userId: number): Promise<{ display_name: string, id: string }> => {
+export const getSpotifyUser = async (userId: number): Promise<{ display_name: string, id: string }> => {
   const accessToken = await getAccessToken(userId);
 
   const response = await fetch("https://api.spotify.com/v1/me", {
@@ -195,9 +163,11 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
   id: playlist.id,
   name: playlist.name,
   imageUrl: playlist.images?.[0]?.url ?? "",
+  public: playlist.public,
   // we'll fetch tracks separately
 });
-const simplifyTrack = (item: any): TrackUI => ({
+const simplifyTrack = (item: any): SpotifyTrack => ({
+  spotifyId: item.track.id,
   name: item.track.name,
   artistsNames: item.track.artists.map((artist: any) => artist.name),
 });
@@ -205,7 +175,7 @@ const simplifyTrack = (item: any): TrackUI => ({
 const getPlaylistTracks = async (
   href: string,
   accessToken: string
-): Promise<any[]> => {
+): Promise<any> => {
   let tracks: any[] = [];
   let nextUrl: string | null = `${href}?limit=100`;
 
@@ -228,7 +198,7 @@ const getPlaylistTracks = async (
   return tracks;
 };
 
-export const getPlaylistsWithTracks = async (userId: number): Promise<Playlist[]> => {
+export const getPlaylistsWithTracksFromSpotify = async (userId: number): Promise<SpotifyPlaylist[]> => {
   try {
     const accessToken = await getAccessToken(userId);
 
@@ -248,18 +218,19 @@ export const getPlaylistsWithTracks = async (userId: number): Promise<Playlist[]
 
     const simplifiedPlaylists = data.items.map((playlist: any) => simplifyPlaylist(playlist));
 
-    const playlistsWithTracks: Playlist[] = await Promise.all(
+    const playlistsWithTracks: SpotifyPlaylist[] = await Promise.all(
       simplifiedPlaylists.map(async (playlist: any) => {
         const tracksData = await getPlaylistTracks(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, accessToken);
 
         const simplifiedTracks: TrackUI[] = tracksData
           .filter((item: any) => item.track && item.track.id)
-          .map((item: any): TrackUI => simplifyTrack(item));
+          .map((item: any): SpotifyTrack => simplifyTrack(item));
 
-        return {
+        const completePlaylist = {
           ...playlist,
           tracks: simplifiedTracks,
         };
+        return completePlaylist;
       })
     );
 
@@ -268,4 +239,87 @@ export const getPlaylistsWithTracks = async (userId: number): Promise<Playlist[]
     console.error("Error fetching playlists", error);
     throw new Error("Failed to fetch playlists");
   }
+};
+
+export const getPlaylistsWithTracksFromDB = async (userId: number): Promise<SpotifyPlaylist[]> => {
+  const playlistsQuery = `
+    SELECT id, name, image_url, spotify_id, public
+    FROM playlists
+    WHERE user_id = $1
+  `;
+  const playlistsResult = await pool.query(playlistsQuery, [userId]);
+
+  const playlists: SpotifyPlaylist[] = [];
+
+  for (const row of playlistsResult.rows) {
+    const playlistId = row.id;
+
+    const tracksQuery = `
+      SELECT t.name, t.artists_names, t.spotify_id
+      FROM playlist_tracks pt
+      JOIN tracks t ON pt.track_id = t.id
+      WHERE pt.playlist_id = $1
+      ORDER BY pt.position
+    `;
+    const tracksResult = await pool.query(tracksQuery, [playlistId]);
+
+    const tracks: SpotifyTrack[] = tracksResult.rows.map((track: any) => ({
+      name: track.name,
+      artistsNames: track.artists_names.split(',').map((s: string) => s.trim()),
+      spotifyId: track.spotify_id
+    }));
+
+    playlists.push({
+      id: row.spotify_id,
+      name: row.name,
+      imageUrl: row.image_url,
+      tracks,
+      public: row.public
+    });
+  }
+
+  return playlists;
+};
+
+
+interface SpotifyTrack extends TrackUI {
+  spotifyId: string;
+}
+
+interface SpotifyPlaylist extends Omit<Playlist, "tracks"> {
+  tracks: SpotifyTrack[];
+}
+
+const savePlaylist = async (userId: number, playlist: SpotifyPlaylist): Promise<void> => {
+  const playlistQuery = `
+    INSERT INTO playlists (user_id, spotify_id, image_url, name)
+    VALUES ($1, $2, $3, $4)
+    ON CONFLICT (spotify_id, user_id) DO UPDATE
+    SET name = EXCLUDED.name,
+        image_url = EXCLUDED.image_url
+  `;
+  await pool.query(playlistQuery, [userId, playlist.id, playlist.imageUrl, playlist.name]);
+
+  const trackPromises = playlist.tracks.map(async (track, index) => {
+    const insertTrackQuery = `
+      INSERT INTO tracks (name, artists_names, spotify_id)
+      VALUES ($1, $2, $3)
+      ON CONFLICT (spotify_id) DO NOTHING
+    `;
+
+    const insertPlaylistTrackQuery = `
+    INSERT INTO playlist_tracks (playlist_id, track_id, position)
+    VALUES (
+      (SELECT id FROM playlists WHERE spotify_id = $1 AND user_id = $2),
+      (SELECT id FROM tracks WHERE spotify_id = $3),
+      $4
+    )
+    ON CONFLICT DO NOTHING
+`;
+
+    await pool.query(insertTrackQuery, [track.name, track.artistsNames.join(", "), track.spotifyId]);
+    await pool.query(insertPlaylistTrackQuery, [playlist.id, userId, track.spotifyId, index]);
+  });
+
+  await Promise.all(trackPromises);
 };

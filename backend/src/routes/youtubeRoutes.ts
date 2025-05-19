@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { login, callback, getPlaylistsWithTracks, getCurrentUser } from "../controllers/ytController";
+import { login, callback, getPlaylistsWithTracks, getCurrentUser } from "../controllers/youtubeController";
 
 const router = Router();
 

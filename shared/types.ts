@@ -9,4 +9,5 @@ export interface Playlist {
     name: string;
     tracks: TrackUI[];
     imageUrl: string;
+    public: boolean;
 }

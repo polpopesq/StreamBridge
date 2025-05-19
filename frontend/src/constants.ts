@@ -4,14 +4,14 @@ import PlainTextLogo from "./assets/logos/txtLogo.png";
 
 export const BACKEND_URL = "http://localhost:8080/api/v1";
 
-export type PlatformKey = 'spotify' | 'ytMusic' | 'txt';
+export type PlatformKey = 'spotify' | 'youtube' | 'txt';
 export const platformData: Record<PlatformKey, { name: string, description: string; logo: string }> = {
   "spotify": {
     name: "Spotify",
     description: "Spotify is a digital music streaming service with millions of songs and podcasts.",
     logo: SpotifyLogo,
   },
-  "ytMusic": {
+  "youtube": {
     name: "YouTube Music",
     description: "YouTube Music allows users to stream music and watch music videos.",
     logo: YoutubeMusicLogo,

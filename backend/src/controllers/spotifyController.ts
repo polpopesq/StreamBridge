@@ -5,11 +5,8 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-//pasul 1. apelam /login din backend
-//aceasta ruta creeaza un url pe care utilizatorul este directionat sa se logheze si sa dea permisiuni
-//daca accepta, e redirectionat catre redirect uri
 export const login = (req: Request, res: Response): void => {
-  const step = req.query.step as string || "0";
+  const step = req.query.step as string || "profile";
   const { url, state } = spotifyService.createLoginURL(step);
 
   const csrfToken = state.split("__")[0];
@@ -17,7 +14,6 @@ export const login = (req: Request, res: Response): void => {
   res.redirect(url);
 };
 
-//asta e redirect uri, aici ajungi dupa ce primesti acordul userului
 export const callback = async (
   req: AuthenticatedRequest,
   res: Response
@@ -36,7 +32,6 @@ export const callback = async (
   }
 
   const [csrfToken, step] = (returnedState as string).split("__");
-  const stepNumber = parseInt(step);
 
   if (csrfToken !== originalState) {
     res.status(403).send("Invalid state.");
@@ -51,13 +46,18 @@ export const callback = async (
 
   await spotifyService.exchangeCodeForTokens(code, userId);
   res.clearCookie("oauth_state");
+  const stepNumber = parseInt(step);
+  if (isNaN(stepNumber)) {
+    res.redirect(`${process.env.FRONTEND_URL}/profil`);
+    return;
+  }
   res.redirect(`${process.env.FRONTEND_URL}/transfera/?step=${stepNumber + 1}`);
 };
 
 export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.user_id as number;
   try {
-    const userData = await spotifyService.getCurrentUser(userId);
+    const userData = await spotifyService.getSpotifyUser(userId);
     res.status(200).json({ "spotify_display_name": userData.display_name });
   } catch (error) {
     res.status(500).json({ "message": "Unexpected error fetching spotify user data." })
@@ -67,7 +67,11 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) =
 export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.user_id as number;
   try {
-    const playlists = await spotifyService.getPlaylistsWithTracks(userId);
+    let playlists = await spotifyService.getPlaylistsWithTracksFromDB(userId);
+    if (playlists.length == 0) {
+      console.log("falling back to getting from spotify");
+      playlists = await spotifyService.getPlaylistsWithTracksFromSpotify(userId);
+    }
     res.status(200).json(playlists);
   } catch (error) {
     res.status(500).json({ "message": "Unexpected error fetching spotify user playlists." })

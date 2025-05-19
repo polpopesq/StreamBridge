@@ -1,8 +1,9 @@
 import { Router } from "express";
-import { transferPlaylist } from "../controllers/transferController";
+import { transferPlaylist, checkPlatformConnected } from "../controllers/transferController";
 
 const router = Router();
 
 router.post("/", transferPlaylist);
+router.get("/checkPlatformConnected", checkPlatformConnected);
 
 export default router;

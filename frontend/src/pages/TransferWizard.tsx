@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Stepper, Step, StepLabel, Box, Card, CardContent } from "@mui/material";
 import SelectPlatform from "../components/wizardSteps/SelectPlatform";
@@ -6,6 +6,7 @@ import SelectPlaylist from "../components/wizardSteps/SelectPlaylist";
 import { BACKEND_URL, PlatformKey } from "../constants";
 import { SnackbarAlert } from "../components/SnackbarAlert";
 import { Playlist } from "@shared/types";
+import { checkPlatformConnected } from "../services/transferService";
 
 const steps = ["Sursă", "Playlist", "Destinație"];
 
@@ -46,31 +47,14 @@ export default function TransferWizard() {
             localStorage.removeItem("transferData");
         }
         if (activeStep === 3) {
-            navigate("/loading", {
-                state: { transferData: data }
-            });
-            // try {
-            //     const res = await fetch(`${BACKEND_URL}/transfer`, {
-            //         method: "POST",
-            //         headers: { "Content-Type": "application/json" },
-            //         body: JSON.stringify(data),
-            //         credentials: "include",
-            //     });
-            //     if (!res.ok) throw new Error("Transfer failed");
-
-            //     const results = await res.json();
-            //     navigate("/check-transfer", {
-            //         state: { transferResults: results },
-            //     });
-            // } catch (err) {
-            //     alert("Transferul a eșuat. Încearcă din nou.");
-            // }
-            // return;
+            navigate("/loading");
         }
-    }, []);
+    }, [activeStep]);
 
     const updateData = (partial: Partial<TransferData>) => {
         setData((prev) => ({ ...prev, ...partial }));
+        localStorage.setItem("transferData", JSON.stringify({ ...data, ...partial }));
+        console.log("Transfer data updated:", { ...data, ...partial });
     };
 
     const redirectToOAuth = (platform: PlatformKey, step: number) => {
@@ -81,12 +65,18 @@ export default function TransferWizard() {
         switch (activeStep) {
             case 0:
                 if (!data.sourcePlatform) return setActiveSnackbar(true);
-                if (["spotify", "ytMusic"].includes(data.sourcePlatform)) {
+                if (["spotify", "youtube"].includes(data.sourcePlatform)) {
                     localStorage.setItem("transferData", JSON.stringify(data));
+                    if (await checkPlatformConnected(data.sourcePlatform)) {
+                        setActiveStep(1);
+                        return;
+                    }
                     return redirectToOAuth(data.sourcePlatform, 0);
                 }
                 if (data.sourcePlatform === "txt") {
-                    return navigate("/transfera?source=txt");
+                    navigate("/transfera?source=txt");
+                    setActiveStep(1);
+                    return;
                 }
                 break;
             case 1:
@@ -94,8 +84,12 @@ export default function TransferWizard() {
                 break;
             case 2:
                 if (!data.destinationPlatform) return setActiveSnackbar(true);
-                if (["spotify", "ytMusic"].includes(data.destinationPlatform)) {
+                if (["spotify", "youtube"].includes(data.destinationPlatform)) {
                     localStorage.setItem("transferData", JSON.stringify(data));
+                    if (await checkPlatformConnected(data.destinationPlatform)) {
+                        setActiveStep(3);
+                        return;
+                    }
                     return redirectToOAuth(data.destinationPlatform, 2);
                 }
                 if (data.destinationPlatform === "txt") {

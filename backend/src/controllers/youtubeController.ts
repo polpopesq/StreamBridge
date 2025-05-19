@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
-import * as ytService from "../services/ytService";
+import * as ytService from "../services/youtubeService";
 
 export const login = (req: Request, res: Response) => {
     const step = req.query.step as string || "0";
@@ -43,8 +43,11 @@ export const callback = async (req: AuthenticatedRequest, res: Response): Promis
 export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;
     try {
-        const playlists = await ytService.getPlaylistsWithTracks(userId);
-
+        let playlists = await ytService.getPlaylistsWithTracksFromDB(userId);
+        if (playlists.length == 0) {
+            console.log("falling back to getting from youtube");
+            playlists = await ytService.getPlaylistsWithTracksFromYoutube(userId);
+        }
         res.status(200).json(playlists);
     } catch (error) {
         res.status(500).json({ "message": "Unexpected error fetching youtube user playlists." })
@@ -54,7 +57,7 @@ export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Res
 export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;
     try {
-        const userData = await ytService.getCurrentUser(userId);
+        const userData = await ytService.getYoutubeUser(userId);
         res.status(200).json({ "youtube_display_name": userData.display_name });
     } catch (error) {
         res.status(500).json({ "message": "Unexpected error fetching youtube user data." })
