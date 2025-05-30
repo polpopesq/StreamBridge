@@ -7,9 +7,8 @@ dotenv.config();
 
 export const login = (req: Request, res: Response): void => {
   const step = req.query.step as string || "profile";
-  const { url, state } = spotifyService.createLoginURL(step);
+  const { url, csrfToken } = spotifyService.prepareLoginRedirect(step);
 
-  const csrfToken = state.split("__")[0];
   res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
   res.redirect(url);
 };
@@ -67,11 +66,7 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) =
 export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
   const userId = req.user?.user_id as number;
   try {
-    let playlists = await spotifyService.getPlaylistsWithTracksFromDB(userId);
-    if (playlists.length == 0) {
-      console.log("falling back to getting from spotify");
-      playlists = await spotifyService.getPlaylistsWithTracksFromSpotify(userId);
-    }
+    const playlists = await spotifyService.getUserPlaylistsWithTracks(userId);
     res.status(200).json(playlists);
   } catch (error) {
     res.status(500).json({ "message": "Unexpected error fetching spotify user playlists." })

@@ -4,8 +4,7 @@ import * as ytService from "../services/youtubeService";
 
 export const login = (req: Request, res: Response) => {
     const step = req.query.step as string || "0";
-    const { url, state } = ytService.createLoginURL(step);
-    const csrfToken = state.split("__")[0];
+    const { url, csrfToken } = ytService.prepareLoginRedirect(step);
 
     res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
     res.redirect(url);
@@ -43,13 +42,14 @@ export const callback = async (req: AuthenticatedRequest, res: Response): Promis
 export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;
     try {
-        let playlists = await ytService.getPlaylistsWithTracksFromDB(userId);
-        if (playlists.length == 0) {
-            console.log("falling back to getting from youtube");
-            playlists = await ytService.getPlaylistsWithTracksFromYoutube(userId);
-        }
+        const playlists = await ytService.getPlaylistsWithTracksFromYoutube(userId);
         res.status(200).json(playlists);
     } catch (error) {
+        if (error instanceof ytService.YouTubeAuthRequiredError) {
+            const { url, csrfToken } = ytService.prepareLoginRedirect();
+            res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
+            return res.redirect(url);
+        }
         res.status(500).json({ "message": "Unexpected error fetching youtube user playlists." })
     }
 }
@@ -60,6 +60,11 @@ export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) =
         const userData = await ytService.getYoutubeUser(userId);
         res.status(200).json({ "youtube_display_name": userData.display_name });
     } catch (error) {
+        if (error instanceof ytService.YouTubeAuthRequiredError) {
+            const { url, csrfToken } = ytService.prepareLoginRedirect();
+            res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
+            return res.redirect(url);
+        }
         res.status(500).json({ "message": "Unexpected error fetching youtube user data." })
     }
 }

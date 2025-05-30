@@ -24,17 +24,3 @@ export const transferPlaylist = async (
 
     return response.json();
 }
-
-export const checkPlatformConnected = async (platform: PlatformKey) => {
-    const response = await fetch(`${BACKEND_URL}/transfer/checkPlatformConnected?platform=${platform}`, {
-        method: "GET",
-        credentials: "include"
-    });
-
-    if (!response.ok) {
-        throw new Error("Failed to check platform connection");
-    }
-
-    const json = await response.json();
-    return json?.isConnected;
-}

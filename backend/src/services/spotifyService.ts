@@ -6,6 +6,21 @@ import { Playlist, TrackUI } from "@shared/types";
 
 dotenv.config();
 
+export interface SpotifyTrack extends TrackUI {
+  spotifyId: string;
+}
+
+export interface SpotifyPlaylist extends Omit<Playlist, "tracks"> {
+  tracks: SpotifyTrack[];
+}
+
+export class SpotifyAuthRequiredError extends Error {
+  constructor() {
+    super("User needs to authenticate with Spotify");
+    this.name = "SpotifyAuthRequiredError";
+  }
+}
+
 const tokenCache = new Map<number, { accessToken: string, expiresAt: number }>();
 
 const createSpotifyApi = (): SpotifyWebApi => {
@@ -24,41 +39,33 @@ const scopes = [
   "user-read-email"
 ];
 
-export const createLoginURL = (step: string): { url: string; state: string } => {
+const createLoginURL = (step: string): { url: string; state: string } => {
   const csrfToken = crypto.randomBytes(16).toString("hex");
   const state = `${csrfToken}__${step}`;
   const url = createSpotifyApi().createAuthorizeURL(scopes, state, true);
   return { url, state };
 };
 
-const getAccessToken = async (userId: number): Promise<string> => {
-  //1. Poate e deja cache-uit
-  const cached = tokenCache.get(userId);
-  if (cached && cached.expiresAt > Date.now()) {
-    return cached.accessToken;
-  }
-
-  //2. Nu e cache-uit dar avem refresh token in DB de la utilizari anterioare
-  const refreshToken = await getRefreshTokenFromDB(userId);
-  if (refreshToken !== null) {
-    const refreshResult = await refreshAccessToken(refreshToken);
-    if (refreshResult) {
-      const { accessToken, expiresIn } = refreshResult;
-      tokenCache.set(userId, { accessToken, expiresAt: Date.now() + expiresIn * 1000 });
-      return accessToken;
-    }
-    throw new Error("Token was not refreshed");
-  }
-
-  //3. New user sau nu avem refresh token pt el for some reason
-  throw new Error("User is not linked with Spotify. Start the auth flow.");
+export const prepareLoginRedirect = (step: string = "0") => {
+  const { url, state } = createLoginURL(step);
+  return { url, csrfToken: state.split("__")[0] };
 }
 
-//first time for an user
-export const exchangeCodeForTokens = async (
-  code: string,
-  userId: number
-): Promise<void> => {
+export const getAccessToken = async (userId: number): Promise<string> => {
+  const cached = tokenCache.get(userId);
+  if (cached && cached.expiresAt > Date.now()) return cached.accessToken;
+
+  const refreshToken = await getRefreshTokenFromDB(userId);
+  if (!refreshToken) throw new SpotifyAuthRequiredError;
+
+  const refreshed = await refreshAccessToken(refreshToken);
+  if (!refreshed) throw new SpotifyAuthRequiredError;
+
+  tokenCache.set(userId, refreshed);
+  return refreshed.accessToken;
+}
+
+export const exchangeCodeForTokens = async (code: string, userId: number): Promise<void> => {
   const spotifyApi = createSpotifyApi();
 
   const data = await spotifyApi.authorizationCodeGrant(code);
@@ -82,11 +89,6 @@ const saveUserInfo = async (userId: number, refreshToken: string, spotifyUserId:
         WHERE id = $3 
       `;
     await pool.query(updateQuery, [refreshToken, spotifyUserId, userId]);
-
-    const userPlaylists = await getPlaylistsWithTracksFromSpotify(userId);
-    await Promise.all(
-      userPlaylists.map((playlist) => savePlaylist(userId, playlist))
-    );
   } catch (error) {
     console.error(error);
   }
@@ -128,10 +130,7 @@ export const getSpotifyUser = async (userId: number): Promise<{ display_name: st
   return { display_name: data.display_name, id: data.id };
 }
 
-export const refreshAccessToken = async (refreshToken: string): Promise<{
-  accessToken: string;
-  expiresIn: number;
-} | null> => {
+export const refreshAccessToken = async (refreshToken: string): Promise<{ accessToken: string, expiresAt: number } | null> => {
   const credentials = `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`;
   const encodedCredentials = Buffer.from(credentials).toString("base64");
 
@@ -155,7 +154,7 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{
   const data = await response.json();
   return {
     accessToken: data.access_token,
-    expiresIn: data.expires_in
+    expiresAt: Date.now() + data.expires_in * 1000
   };
 }
 
@@ -164,18 +163,16 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
   name: playlist.name,
   imageUrl: playlist.images?.[0]?.url ?? "",
   public: playlist.public,
-  // we'll fetch tracks separately
 });
+
 const simplifyTrack = (item: any): SpotifyTrack => ({
   spotifyId: item.track.id,
   name: item.track.name,
   artistsNames: item.track.artists.map((artist: any) => artist.name),
 });
 
-const getPlaylistTracks = async (
-  href: string,
-  accessToken: string
-): Promise<any> => {
+const getPlaylistTracks = async (playlistId: string, accessToken: string): Promise<SpotifyTrack[]> => {
+  const href = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
   let tracks: any[] = [];
   let nextUrl: string | null = `${href}?limit=100`;
 
@@ -195,40 +192,42 @@ const getPlaylistTracks = async (
     tracks.push(...data.items);
     nextUrl = data.next;
   }
-  return tracks;
-};
+  const simplifiedTracks = tracks.map((track) => simplifyTrack(track))
 
-export const getPlaylistsWithTracksFromSpotify = async (userId: number): Promise<SpotifyPlaylist[]> => {
+  return simplifiedTracks;
+}
+
+const getUserPlaylists = async (userId: number): Promise<Omit<Playlist, "tracks">[]> => {
+  const accessToken = await getAccessToken(userId);
+
+  const response = await fetch("https://api.spotify.com/v1/me/playlists", {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Spotify API error:", errorText);
+    throw new Error(`Spotify API error: ${response.status}`);
+  }
+
+  const data = await response.json();
+
+  return data.items.map((playlist: any) => simplifyPlaylist(playlist));
+}
+
+export const getUserPlaylistsWithTracks = async (userId: number): Promise<SpotifyPlaylist[]> => {
   try {
+    const simplifiedPlaylists = await getUserPlaylists(userId);
     const accessToken = await getAccessToken(userId);
 
-    const response = await fetch("https://api.spotify.com/v1/me/playlists", {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Spotify API error:", errorText);
-      throw new Error(`Spotify API error: ${response.status}`);
-    }
-
-    const data = await response.json();
-
-    const simplifiedPlaylists = data.items.map((playlist: any) => simplifyPlaylist(playlist));
-
-    const playlistsWithTracks: SpotifyPlaylist[] = await Promise.all(
-      simplifiedPlaylists.map(async (playlist: any) => {
-        const tracksData = await getPlaylistTracks(`https://api.spotify.com/v1/playlists/${playlist.id}/tracks`, accessToken);
-
-        const simplifiedTracks: TrackUI[] = tracksData
-          .filter((item: any) => item.track && item.track.id)
-          .map((item: any): SpotifyTrack => simplifyTrack(item));
-
+    const playlistsWithTracks = await Promise.all(
+      simplifiedPlaylists.map(async (playlist) => {
+        const tracks = await getPlaylistTracks(playlist.id, accessToken);
         const completePlaylist = {
           ...playlist,
-          tracks: simplifiedTracks,
+          tracks
         };
         return completePlaylist;
       })
@@ -241,85 +240,25 @@ export const getPlaylistsWithTracksFromSpotify = async (userId: number): Promise
   }
 };
 
-export const getPlaylistsWithTracksFromDB = async (userId: number): Promise<SpotifyPlaylist[]> => {
-  const playlistsQuery = `
-    SELECT id, name, image_url, spotify_id, public
-    FROM playlists
-    WHERE user_id = $1
-  `;
-  const playlistsResult = await pool.query(playlistsQuery, [userId]);
-
-  const playlists: SpotifyPlaylist[] = [];
-
-  for (const row of playlistsResult.rows) {
-    const playlistId = row.id;
-
-    const tracksQuery = `
-      SELECT t.name, t.artists_names, t.spotify_id
-      FROM playlist_tracks pt
-      JOIN tracks t ON pt.track_id = t.id
-      WHERE pt.playlist_id = $1
-      ORDER BY pt.position
-    `;
-    const tracksResult = await pool.query(tracksQuery, [playlistId]);
-
-    const tracks: SpotifyTrack[] = tracksResult.rows.map((track: any) => ({
-      name: track.name,
-      artistsNames: track.artists_names.split(',').map((s: string) => s.trim()),
-      spotifyId: track.spotify_id
-    }));
-
-    playlists.push({
-      id: row.spotify_id,
-      name: row.name,
-      imageUrl: row.image_url,
-      tracks,
-      public: row.public
-    });
-  }
-
-  return playlists;
-};
-
-
-interface SpotifyTrack extends TrackUI {
-  spotifyId: string;
-}
-
-interface SpotifyPlaylist extends Omit<Playlist, "tracks"> {
-  tracks: SpotifyTrack[];
-}
-
-const savePlaylist = async (userId: number, playlist: SpotifyPlaylist): Promise<void> => {
-  const playlistQuery = `
-    INSERT INTO playlists (user_id, spotify_id, image_url, name)
-    VALUES ($1, $2, $3, $4)
-    ON CONFLICT (spotify_id, user_id) DO UPDATE
-    SET name = EXCLUDED.name,
-        image_url = EXCLUDED.image_url
-  `;
-  await pool.query(playlistQuery, [userId, playlist.id, playlist.imageUrl, playlist.name]);
-
-  const trackPromises = playlist.tracks.map(async (track, index) => {
-    const insertTrackQuery = `
-      INSERT INTO tracks (name, artists_names, spotify_id)
-      VALUES ($1, $2, $3)
-      ON CONFLICT (spotify_id) DO NOTHING
-    `;
-
-    const insertPlaylistTrackQuery = `
-    INSERT INTO playlist_tracks (playlist_id, track_id, position)
-    VALUES (
-      (SELECT id FROM playlists WHERE spotify_id = $1 AND user_id = $2),
-      (SELECT id FROM tracks WHERE spotify_id = $3),
-      $4
-    )
-    ON CONFLICT DO NOTHING
-`;
-
-    await pool.query(insertTrackQuery, [track.name, track.artistsNames.join(", "), track.spotifyId]);
-    await pool.query(insertPlaylistTrackQuery, [playlist.id, userId, track.spotifyId, index]);
+export const getPlaylistById = async (userId: number, playlistId: string): Promise<SpotifyPlaylist> => {
+  const accessToken = await getAccessToken(userId);
+  const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+    headers: {
+      Authorization: `Bearer ${accessToken}`
+    }
   });
 
-  await Promise.all(trackPromises);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Spotify getPlaylistById error: ${errorText}`);
+  }
+
+  const data = await response.json();
+  const playlistWithoutTracks = simplifyPlaylist(data);
+  const tracks = await getPlaylistTracks(playlistWithoutTracks.id, accessToken);
+
+  return {
+    ...playlistWithoutTracks,
+    tracks
+  }
 };

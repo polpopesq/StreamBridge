@@ -95,7 +95,9 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ onChange }) => {
                                         <Typography variant="body2">First five tracks:</Typography>
                                         {playlist.tracks.slice(0, 5).map((trackItem: TrackUI, index: number) => (
                                             <Typography key={index} variant="body2">
-                                                {`${trackItem.artistsNames[0] !== "" ? trackItem.artistsNames.join(", ") + " - " : ""}${trackItem.name}`}
+                                                {`${trackItem.artistsNames
+                                                    && trackItem.artistsNames[0] !== ""
+                                                    ? trackItem.artistsNames.join(", ") + " - " : ""}${trackItem.name}`}
                                             </Typography>
                                         ))}
                                         <img src={playlist.imageUrl} alt="Playlist cover" style={{ width: "20%", height: "auto" }} />

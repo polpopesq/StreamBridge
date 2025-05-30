@@ -6,7 +6,6 @@ import SelectPlaylist from "../components/wizardSteps/SelectPlaylist";
 import { BACKEND_URL, PlatformKey } from "../constants";
 import { SnackbarAlert } from "../components/SnackbarAlert";
 import { Playlist } from "@shared/types";
-import { checkPlatformConnected } from "../services/transferService";
 
 const steps = ["Sursă", "Playlist", "Destinație"];
 
@@ -67,10 +66,6 @@ export default function TransferWizard() {
                 if (!data.sourcePlatform) return setActiveSnackbar(true);
                 if (["spotify", "youtube"].includes(data.sourcePlatform)) {
                     localStorage.setItem("transferData", JSON.stringify(data));
-                    if (await checkPlatformConnected(data.sourcePlatform)) {
-                        setActiveStep(1);
-                        return;
-                    }
                     return redirectToOAuth(data.sourcePlatform, 0);
                 }
                 if (data.sourcePlatform === "txt") {
@@ -86,10 +81,6 @@ export default function TransferWizard() {
                 if (!data.destinationPlatform) return setActiveSnackbar(true);
                 if (["spotify", "youtube"].includes(data.destinationPlatform)) {
                     localStorage.setItem("transferData", JSON.stringify(data));
-                    if (await checkPlatformConnected(data.destinationPlatform)) {
-                        setActiveStep(3);
-                        return;
-                    }
                     return redirectToOAuth(data.destinationPlatform, 2);
                 }
                 if (data.destinationPlatform === "txt") {
