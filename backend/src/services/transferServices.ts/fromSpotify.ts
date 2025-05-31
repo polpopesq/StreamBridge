@@ -34,38 +34,12 @@ const mapSpotifyTrackToYoutubeTrack = async (
     youtubeAccessToken: string
 ): Promise<youtubeService.YoutubeTrack> => {
     const query = `${track.name} ${track.artistsNames.join(" ")}`;
-    const url = new URL("https://www.googleapis.com/youtube/v3/search");
-    url.searchParams.set("part", "snippet");
-    url.searchParams.set("q", query);
-    url.searchParams.set("type", "video");
-    url.searchParams.set("maxResults", "1");
+    const result = await youtubeService.searchTrack(query, youtubeAccessToken);
 
-    const res = await fetch(url.toString(), {
-        headers: {
-            Authorization: `Bearer ${youtubeAccessToken}`,
-            Accept: "application/json",
-        },
-    });
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Error searching track "${query}":`, errorText);
-        throw new Error(`YouTube search API returned ${res.status}`);
+    if (!result) {
+        throw new Error(`No YouTube results found for "${track.name}".`);
     }
-
-    const data = await res.json();
-    const item = data.items?.[0];
-
-    if (!item) {
-        throw new Error(`No YouTube results found for "${query}"`);
-    }
-
-    return {
-        name: item.snippet.title,
-        channelName: item.snippet.channelTitle,
-        youtubeId: item.id.videoId,
-        description: item.snippet.description,
-    };
+    return result;
 };
 
 const spotifyToYoutubeMapper = async (
@@ -93,20 +67,15 @@ const spotifyToYoutubeMapper = async (
     return { foundTracks, notFoundTracks };
 };
 
-const getAllYoutubeTracksFromAI = async (
-    tracks: spotifyService.SpotifyTrack[],
-    accessToken: string,
-): Promise<{
-    aifoundTracks: youtubeService.YoutubeTrack[]
-    stillNotFoundTracks: spotifyService.SpotifyTrack[]
-}> => {
+const getAllYoutubeTracksFromAI = async (tracks: spotifyService.SpotifyTrack[], accessToken: string,):
+    Promise<{ aifoundTracks: youtubeService.YoutubeTrack[], stillNotFoundTracks: spotifyService.SpotifyTrack[] }> => {
     const aifoundTracks: youtubeService.YoutubeTrack[] = [];
     const stillNotFoundTracks: spotifyService.SpotifyTrack[] = [];
 
     await Promise.all(
         tracks.map(async (track) => {
             try {
-                const ytTrack = await getYoutubeTrackFromAI(track, accessToken);
+                const ytTrack = await getYoutubeTrackFromAI(track.name, track.artistsNames, accessToken);
                 aifoundTracks.push(ytTrack);
             } catch (error) {
                 console.warn(`Still no AI result for track "${track.name}" by [${track.artistsNames.join(", ")}]`);
@@ -118,12 +87,9 @@ const getAllYoutubeTracksFromAI = async (
     return { aifoundTracks, stillNotFoundTracks };
 }
 
-const getYoutubeTrackFromAI = async (
-    track: spotifyService.SpotifyTrack,
-    accessToken: string,
-    fallbackModel: string = "mistralai/mixtral-8x7b"
-): Promise<youtubeService.YoutubeTrack> => {
-    const prompt = buildPromptSpotifyToYoutube(track);
+const getYoutubeTrackFromAI = async (trackName: string, artistsNames: string[], accessToken: string, fallbackModel: string = "mistralai/mixtral-8x7b"):
+    Promise<youtubeService.YoutubeTrack> => {
+    const prompt = buildPromptSpotifyToYoutube(trackName, artistsNames);
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -143,15 +109,15 @@ const getYoutubeTrackFromAI = async (
 
     const youtubeId = extractYoutubeIdFromText(content);
     if (!youtubeId) {
-        throw new Error(`AI fallback failed for track "${track.name}"`);
+        throw new Error(`AI fallback failed for track "${trackName}"`);
     }
 
     return await youtubeService.getYoutubeVideoDetails(youtubeId, accessToken);
 
 };
 
-const buildPromptSpotifyToYoutube = (track: spotifyService.SpotifyTrack): string => {
-    return `Find a relevant YouTube video for the song "${track.name}" by ${track.artistsNames.join(", ")}. Return only the full YouTube link.`;
+const buildPromptSpotifyToYoutube = (trackName: string, artistsNames: string[]): string => {
+    return `Find a relevant YouTube video for the song "${trackName}" by ${artistsNames.join(", ")}. Return only the full YouTube link. Do not send anything if you don't find it.`;
 };
 
 const extractYoutubeIdFromText = (text: string): string | null => {

@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS users (
     youtube_id VARCHAR(255) UNIQUE,
     spotify_id VARCHAR(255) UNIQUE,
     youtube_refresh_token VARCHAR(255),
-    spotify_refresh_token VARCHAR(255)
+    spotify_refresh_token VARCHAR(255),
+    isAdmin BOOLEAN DEFAULT TRUE
 );
 
 CREATE TABLE IF NOT EXISTS transfers (
@@ -18,3 +19,17 @@ CREATE TABLE IF NOT EXISTS transfers (
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS matched_songs (
+    id SERIAL PRIMARY KEY,
+    name VARCHAR(50),
+    artists VARCHAR(100),
+    spotify_id VARCHAR(200),
+    youtube_id VARCHAR(200)
+)
+
+CREATE TABLE IF NOT EXISTS non_matched_songs (
+    id SERIAL PRIMARY KEY,
+    spotify_id VARCHAR(200),
+    youtube_id VARCHAR(200)
+)

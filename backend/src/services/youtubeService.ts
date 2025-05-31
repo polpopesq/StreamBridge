@@ -29,60 +29,6 @@ export class YouTubeAuthRequiredError extends Error {
     }
 }
 
-export interface YoutubeVideoDetails {
-    youtubeId: string;
-    name: string;
-    description: string;
-    channelName: string;
-    duration: number;
-    viewCount: number;
-    isLicensed: boolean;
-}
-
-export const getVideoDetails = async (videoId: string, accessToken: string): Promise<YoutubeVideoDetails> => {
-
-    const isoToSeconds = (duration: string): number => {
-        const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
-        const matches = duration.match(regex);
-        if (!matches) return 0;
-
-        const hours = parseInt(matches[1] || "0", 10);
-        const minutes = parseInt(matches[2] || "0", 10);
-        const seconds = parseInt(matches[3] || "0", 10);
-
-        return hours * 3600 + minutes * 60 + seconds;
-    };
-
-    const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics,status&id=${videoId}`;
-
-    const response = await fetch(url, {
-        method: "GET",
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json"
-        }
-    });
-
-    const data = await response.json();
-
-    if (!data.items || data.items.length === 0) {
-        throw new Error(`Video with ID ${videoId} not found`);
-    }
-
-    const video = data.items[0];
-    const { snippet, contentDetails, statistics, status } = video;
-
-    return {
-        youtubeId: videoId,
-        name: snippet.title,
-        description: snippet.description,
-        channelName: snippet.channelTitle,
-        duration: isoToSeconds(contentDetails.duration),
-        viewCount: parseInt(statistics.viewCount ?? "0"),
-        isLicensed: contentDetails.licensedContent ?? false,
-    };
-};
-
 const createLoginURL = (step: string): { url: string; state: string } => {
     const csrfToken = crypto.randomBytes(16).toString("hex");
     const state = `${csrfToken}__${step}`;
@@ -229,6 +175,7 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
     imageUrl: playlist.snippet.thumbnails.default.url ?? "",
     public: playlist.status.privacyStatus === "public",
 });
+
 const simplifyTrack = (item: any): YoutubeTrack => ({
     name: item.snippet.title,
     channelName: item.snippet.videoOwnerChannelTitle,
@@ -301,42 +248,6 @@ export const getPlaylistTracks = async (playlistId: string, accessToken: string)
     return simplifiedTracks;
 };
 
-export const searchTrack = async (
-    name: string,
-    artistsNames: string[],
-    accessToken: string
-): Promise<string> => {
-    const query = `${name} ${artistsNames.join(" ")}`;
-
-    const url = new URL("https://www.googleapis.com/youtube/v3/search");
-    url.searchParams.set("part", "snippet");
-    url.searchParams.set("q", query);
-    url.searchParams.set("type", "video");
-    url.searchParams.set("maxResults", "1");
-
-    const res = await fetch(url.toString(), {
-        headers: {
-            Authorization: `Bearer ${accessToken}`,
-            Accept: "application/json",
-        },
-    });
-
-    if (!res.ok) {
-        const errorText = await res.text();
-        console.error(`Error searching track "${query}":`, errorText);
-        throw new Error(`YouTube search API returned ${res.status}`);
-    }
-
-    const data = await res.json();
-    const videoId = data.items?.[0]?.id?.videoId;
-
-    if (!videoId) {
-        throw new Error(`No results found for "${query}"`);
-    }
-
-    return videoId;
-};
-
 export const getYoutubeVideoDetails = async (
     youtubeId: string,
     accessToken: string
@@ -370,8 +281,6 @@ export const getYoutubeVideoDetails = async (
     };
 };
 
-//TODO: incearca cu varianta cu detalii mai multe despre clip
-
 export const getPlaylistById = async (userId: number, playlistId: string): Promise<YoutubePlaylist> => {
     const accessToken = await getAccessToken(userId);
 
@@ -396,3 +305,88 @@ export const getPlaylistById = async (userId: number, playlistId: string): Promi
         tracks
     }
 };
+
+export const searchTrack = async (query: string, accessToken: string): Promise<YoutubeTrack | null> => {
+    const url = new URL("https://www.googleapis.com/youtube/v3/search");
+    url.searchParams.set("part", "snippet");
+    url.searchParams.set("q", query);
+    url.searchParams.set("type", "video");
+    url.searchParams.set("maxResults", "1");
+
+    const res = await fetch(url.toString(), {
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            Accept: "application/json",
+        },
+    });
+
+    if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`Error searching track "${query}":`, errorText);
+        return null;
+    }
+
+    const data = await res.json();
+    const item = data.items?.[0];
+
+    if (!item) {
+        console.warn(`No YouTube results found for "${query}"`);
+        return null;
+    }
+
+    return simplifyTrack(item);
+}
+
+// export interface YoutubeVideoDetails {
+//     youtubeId: string;
+//     name: string;
+//     description: string;
+//     channelName: string;
+//     duration: number;
+//     viewCount: number;
+//     isLicensed: boolean;
+// }
+
+// export const getVideoDetails = async (videoId: string, accessToken: string): Promise<YoutubeVideoDetails> => {
+
+//     const isoToSeconds = (duration: string): number => {
+//         const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
+//         const matches = duration.match(regex);
+//         if (!matches) return 0;
+
+//         const hours = parseInt(matches[1] || "0", 10);
+//         const minutes = parseInt(matches[2] || "0", 10);
+//         const seconds = parseInt(matches[3] || "0", 10);
+
+//         return hours * 3600 + minutes * 60 + seconds;
+//     };
+
+//     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics,status&id=${videoId}`;
+
+//     const response = await fetch(url, {
+//         method: "GET",
+//         headers: {
+//             Authorization: `Bearer ${accessToken}`,
+//             Accept: "application/json"
+//         }
+//     });
+
+//     const data = await response.json();
+
+//     if (!data.items || data.items.length === 0) {
+//         throw new Error(`Video with ID ${videoId} not found`);
+//     }
+
+//     const video = data.items[0];
+//     const { snippet, contentDetails, statistics, status } = video;
+
+//     return {
+//         youtubeId: videoId,
+//         name: snippet.title,
+//         description: snippet.description,
+//         channelName: snippet.channelTitle,
+//         duration: isoToSeconds(contentDetails.duration),
+//         viewCount: parseInt(statistics.viewCount ?? "0"),
+//         isLicensed: contentDetails.licensedContent ?? false,
+//     };
+// };

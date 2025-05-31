@@ -165,7 +165,7 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
   public: playlist.public,
 });
 
-const simplifyTrack = (item: any): SpotifyTrack => ({
+export const simplifyTrack = (item: any): SpotifyTrack => ({
   spotifyId: item.track.id,
   name: item.track.name,
   artistsNames: item.track.artists.map((artist: any) => artist.name),
@@ -262,3 +262,51 @@ export const getPlaylistById = async (userId: number, playlistId: string): Promi
     tracks
   }
 };
+
+export const getTrackDetails = async (trackId: string, accessToken: string): Promise<SpotifyTrack> => {
+  const response = await fetch(`https://api.spotify.com/v1/tracks/${trackId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json"
+    }
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to fetch Spotify track details for ${trackId}: ${errorText}`);
+  }
+
+  const data = await response.json();
+
+  return simplifyTrack(data);
+};
+
+export const searchTrack = async (query: string, accessToken: string): Promise<SpotifyTrack | null> => {
+  const url = new URL("https://api.spotify.com/v1/search");
+  url.searchParams.set("q", query);
+  url.searchParams.set("type", "track");
+  url.searchParams.set("limit", "1");
+
+  const res = await fetch(url.toString(), {
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      Accept: "application/json",
+    },
+  });
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error(`Error searching track "${query}" on Spotify:`, errorText);
+    return null;
+  }
+
+  const data = await res.json();
+  const item = data.tracks?.items?.[0];
+  if (item) {
+    return simplifyTrack(item);
+  } else {
+    console.warn(`No result for Spotify query: "${query}"`);
+    return null;
+  }
+}

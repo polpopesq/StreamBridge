@@ -1,7 +1,8 @@
 
 import { PlatformKey } from "../../controllers/transferController";
 import { spotifyToYoutubeTransfer, spotifyToTxtTransfer } from "./fromSpotify";
-import { youtubeToSpotifyTransfer } from "./fromYoutube";
+import { youtubeToSpotifyTransfer, youtubeToTxtTransfer } from "./fromYoutube";
+import { txtToSpotifyTransfer, txtToYoutubeTransfer } from "./fromTxt";
 
 type TransferHandler = (userId: number, playlistId: string) => Promise<any>;
 
@@ -15,14 +16,14 @@ const transferHandlers: Record<string, TransferHandler> = {
     "youtube|txt": async (userId, playlistId) => {
         return await youtubeToTxtTransfer(userId, playlistId);
     },
-    "txt|youtube": async (userId, playlistId) => {
-        return await txtToYoutubeTransfer(userId, playlistId);
+    "txt|youtube": async (userId, txtContent) => {
+        return await txtToYoutubeTransfer(userId, txtContent);
     },
     "spotify|txt": async (userId, playlistId) => {
         return await spotifyToTxtTransfer(userId, playlistId);
     },
-    "txt|spotify": async (userId, playlistId) => {
-        return await txtToSpotifyTransfer(userId, playlistId);
+    "txt|spotify": async (userId, txtContent) => {
+        return await txtToSpotifyTransfer(userId, txtContent);
     },
 };
 
