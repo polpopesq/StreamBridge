@@ -304,7 +304,11 @@ export const searchTrack = async (query: string, accessToken: string): Promise<S
   const data = await res.json();
   const item = data.tracks?.items?.[0];
   if (item) {
-    return simplifyTrack(item);
+    return {
+      spotifyId: item.id,
+      name: item.name,
+      artistsNames: item.artists.map((artist: any) => artist.name)
+    }
   } else {
     console.warn(`No result for Spotify query: "${query}"`);
     return null;

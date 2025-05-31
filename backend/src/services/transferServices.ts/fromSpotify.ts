@@ -11,6 +11,7 @@ export const spotifyToYoutubeTransfer = async (userId: number, playlistId: strin
 
     const { foundTracks, notFoundTracks } = await spotifyToYoutubeMapper(spotifyPlaylist, youtubeAccessToken);
     if (notFoundTracks.length !== 0) {
+        console.log("Falling back to AI...");
         const { aifoundTracks, stillNotFoundTracks } = await getAllYoutubeTracksFromAI(notFoundTracks, youtubeAccessToken);
         aifoundTracks.forEach(track => foundTracks.push(track));
         return { foundTracks, notFoundTracks: stillNotFoundTracks };
@@ -42,13 +43,11 @@ const mapSpotifyTrackToYoutubeTrack = async (
     return result;
 };
 
-const spotifyToYoutubeMapper = async (
-    ogPlaylist: spotifyService.SpotifyPlaylist,
-    youtubeAccessToken: string
-): Promise<{
-    foundTracks: youtubeService.YoutubeTrack[],
-    notFoundTracks: spotifyService.SpotifyTrack[]
-}> => {
+const spotifyToYoutubeMapper = async (ogPlaylist: spotifyService.SpotifyPlaylist, youtubeAccessToken: string):
+    Promise<{
+        foundTracks: youtubeService.YoutubeTrack[],
+        notFoundTracks: spotifyService.SpotifyTrack[]
+    }> => {
     const foundTracks: youtubeService.YoutubeTrack[] = [];
     const notFoundTracks: spotifyService.SpotifyTrack[] = [];
 

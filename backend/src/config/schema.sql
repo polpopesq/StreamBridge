@@ -26,10 +26,10 @@ CREATE TABLE IF NOT EXISTS matched_songs (
     artists VARCHAR(100),
     spotify_id VARCHAR(200),
     youtube_id VARCHAR(200)
-)
+);
 
 CREATE TABLE IF NOT EXISTS non_matched_songs (
     id SERIAL PRIMARY KEY,
     spotify_id VARCHAR(200),
     youtube_id VARCHAR(200)
-)
+);

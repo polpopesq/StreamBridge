@@ -127,8 +127,6 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
         }),
     });
 
-    console.log(await res.json());
-
     if (!res.ok) return null;
     const data = await res.json();
     return {
@@ -179,7 +177,7 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
 const simplifyTrack = (item: any): YoutubeTrack => ({
     name: item.snippet.title,
     channelName: item.snippet.videoOwnerChannelTitle,
-    youtubeId: item.id,
+    youtubeId: item.id.videoId,
     description: item.snippet.description
 });
 
@@ -284,7 +282,7 @@ export const getYoutubeVideoDetails = async (
 export const getPlaylistById = async (userId: number, playlistId: string): Promise<YoutubePlaylist> => {
     const accessToken = await getAccessToken(userId);
 
-    const playlistRes = await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}`, {
+    const playlistRes = await fetch(`https://www.googleapis.com/youtube/v3/playlists?part=snippet,status&id=${playlistId}`, {
         headers: {
             Authorization: `Bearer ${accessToken}`
         }
@@ -297,7 +295,7 @@ export const getPlaylistById = async (userId: number, playlistId: string): Promi
 
     const playlistData = await playlistRes.json();
 
-    const playlistWithoutTracks = simplifyPlaylist(playlistData);
+    const playlistWithoutTracks = simplifyPlaylist(playlistData.items[0]);
     const tracks = await getPlaylistTracks(playlistWithoutTracks.id, accessToken);
 
     return {

@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "nodemon src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "debug": "nodemon --exec \"node --inspect -r ts-node/register\" src/server.ts"
   },
   "keywords": [],
   "author": "",
@@ -33,7 +34,7 @@
     "@types/express": "^5.0.0",
     "@types/express-session": "^1.18.1",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^22.13.10",
+    "@types/node": "^22.15.29",
     "@types/pg": "^8.11.11",
     "@types/spotify-web-api-node": "^5.0.11",
     "express-session": "^1.18.1",
@@ -41,6 +42,6 @@
     "pg": "^8.14.0",
     "prisma": "^6.5.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.8.2"
+    "typescript": "^5.8.3"
   }
 }

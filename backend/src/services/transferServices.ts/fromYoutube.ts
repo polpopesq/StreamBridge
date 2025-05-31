@@ -104,17 +104,18 @@ const youtubeToSpotifyMapper = async (normalizedPlaylist: youtubeService.Youtube
     const foundTracks: spotifyService.SpotifyTrack[] = [];
     const notFoundTracks: youtubeService.YoutubeTrack[] = [];
 
-    await Promise.all(
-        normalizedPlaylist.tracks.map(async (track) => {
-            try {
-                const spTrack = await mapYoutubeTrackToSpotifyTrack(track, spotifyAccessToken);
-                foundTracks.push(spTrack);
-            } catch (error) {
-                console.warn(`No result for YouTube track "${track.name}" by channel "${track.channelName}"`);
-                notFoundTracks.push(track);
-            }
-        })
-    );
+    // await Promise.all(
+    //     normalizedPlaylist.tracks.map(async (track) => {
+    //         try {
+    //             const spTrack = await mapYoutubeTrackToSpotifyTrack(track, spotifyAccessToken);
+    //             foundTracks.push(spTrack);
+    //         } catch (error) {
+    //             console.warn(`No result for YouTube track "${track.name}" by channel "${track.channelName}"`);
+    //             notFoundTracks.push(track);
+    //         }
+    //     })
+    // );
+    normalizedPlaylist.tracks.forEach(track => notFoundTracks.push(track));
 
     return { foundTracks, notFoundTracks };
 };
@@ -127,7 +128,7 @@ const getAllSpotifyTracksFromAI = async (tracks: youtubeService.YoutubeTrack[], 
     await Promise.all(
         tracks.map(async (track) => {
             try {
-                const spTrack = await getSpotifyTrackFromAI(track.name, track.channelName, accessToken);
+                const spTrack = await getSpotifyTrackFromAI(track, accessToken);
                 aiFoundTracks.push(spTrack);
             } catch (error) {
                 console.warn(`Still no AI result for track "${track.name}"`);
@@ -139,9 +140,9 @@ const getAllSpotifyTracksFromAI = async (tracks: youtubeService.YoutubeTrack[], 
     return { aiFoundTracks: aiFoundTracks, stillNotFoundTracks };
 };
 
-const getSpotifyTrackFromAI = async (trackName: string, channelName: string, accessToken: string, fallbackModel: string = "mistralai/mixtral-8x7b"):
+const getSpotifyTrackFromAI = async (track: youtubeService.YoutubeTrack, accessToken: string, fallbackModel: string = "deepseek/deepseek-r1-0528-qwen3-8b:free"):
     Promise<spotifyService.SpotifyTrack> => {
-    const prompt = buildPromptYoutubeToSpotify(trackName, channelName);
+    const prompt = buildPromptYoutubeToSpotify(track);
 
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -159,19 +160,18 @@ const getSpotifyTrackFromAI = async (trackName: string, channelName: string, acc
     const json = await response.json();
     const content = json.choices?.[0]?.message?.content || "";
 
-    const spotifyId = extractSpotifyIdFromText(content);
-    if (!spotifyId) {
-        throw new Error(`AI fallback failed for YouTube track "${trackName}"`);
+    if (!content || content === "") {
+        throw new Error(`AI fallback found no Spotify equivalent for track "${track.name}"`);
     }
 
-    return await spotifyService.getTrackDetails(spotifyId, accessToken);
+    const spotifyResult = await spotifyService.searchTrack(content, accessToken);
+    if (!spotifyResult) {
+        throw new Error(`AI fallback found no Spotify equivalent for track "${track.name}"`);
+    }
+
+    return spotifyResult;
 };
 
-const buildPromptYoutubeToSpotify = (trackName: string, channelName: string): string => {
-    return `Find a relevant Spotify link for the song "${trackName}" from the YouTube channel "${channelName}". Return only the full Spotify track URL. Do not send anything if you don't find it.`;
-};
-
-const extractSpotifyIdFromText = (text: string): string | null => {
-    const match = text.match(/(?:https?:\/\/)?(?:open\.spotify\.com\/track\/)([\w\d]{22})/);
-    return match ? match[1] : null;
+const buildPromptYoutubeToSpotify = (track: youtubeService.YoutubeTrack): string => {
+    return `Knowing Youtube track name ${track.name}. Give me the song in the format artist songName.`;
 };
