@@ -14,6 +14,7 @@ import { isLoggedIn } from "./services/authService";
 import { useAuth } from "./services/AuthContext";
 import { ProtectedRoute } from "./services/ProtectedRoute";
 import LoadingScreen from "./pages/LoadingScreen";
+import CheckTransferPage from "./pages/CheckTransferPage";
 
 function App() {
   const { loggedIn, setLoggedIn } = useAuth();
@@ -55,6 +56,10 @@ function App() {
               <AccountPage />
             </ProtectedRoute>} />
           <Route path="/loading" element={<LoadingScreen />} />
+          <Route path="/checkout" element=
+            {<ProtectedRoute isAuthenticated={loggedIn}>
+              <CheckTransferPage />
+            </ProtectedRoute>} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

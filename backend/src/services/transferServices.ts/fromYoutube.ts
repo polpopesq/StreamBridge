@@ -4,46 +4,29 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+interface YoutubeSpotifyMap {
+    track: youtubeService.YoutubeTrack;
+    result: spotifyService.SpotifyTrack | null;
+};
+
 export const youtubeToSpotifyTransfer = async (userId: number, playlistId: string):
-    Promise<{ foundTracks: spotifyService.SpotifyTrack[], notFoundTracks: youtubeService.YoutubeTrack[] }> => {
-    const playlist = await youtubeService.getPlaylistById(userId, playlistId);
+    Promise<YoutubeSpotifyMap[]> => {
+    const youtubePlaylist = await youtubeService.getPlaylistById(userId, playlistId);
     const normalizedPlaylist = {
-        ...playlist,
-        tracks: normalizeTracks(playlist.tracks)
+        ...youtubePlaylist,
+        tracks: normalizeTracks(youtubePlaylist.tracks)
     }
 
     const spotifyAccessToken = await spotifyService.getAccessToken(userId);
-    const { foundTracks, notFoundTracks } = await youtubeToSpotifyMapper(normalizedPlaylist, spotifyAccessToken);
-    if (notFoundTracks.length !== 0) {
-        const { aiFoundTracks, stillNotFoundTracks } = await getAllSpotifyTracksFromAI(notFoundTracks, spotifyAccessToken);
-        aiFoundTracks.forEach(track => foundTracks.push(track));
-        return { foundTracks, notFoundTracks: stillNotFoundTracks };
-    }
-    return { foundTracks, notFoundTracks };
+    return await youtubeToSpotifyMapper(normalizedPlaylist, spotifyAccessToken);
 }
 
 export const youtubeToTxtTransfer = async (userId: number, playlistId: string): Promise<string> => {
     const youtubePlaylist = await youtubeService.getPlaylistById(userId, playlistId);
-    const { foundTracks, notFoundTracks } = await youtubeToSpotifyTransfer(userId, playlistId);
-
-    const lines: string[] = [];
-
-    foundTracks.forEach(track => {
-        const artists = track.artistsNames.join(", ");
-        lines.push(`${artists} - ${track.name}`);
-    });
-
-    if (notFoundTracks.length > 0 && foundTracks.length > 0) {
-        lines.push("");
-    }
-
-    notFoundTracks.forEach(track => {
-        lines.push(`// youtube only: ${track.channelName} - ${track.name}`);
-    });
+    const lines = youtubePlaylist.tracks.map(track => `${track.channelName} - ${track.name}`);
 
     return lines.join("\n");
 };
-
 
 const normalizeTracks = (tracks: youtubeService.YoutubeTrack[]): youtubeService.YoutubeTrack[] => {
     const cleanTitle = (title: string): string => {
@@ -74,10 +57,7 @@ const normalizeTracks = (tracks: youtubeService.YoutubeTrack[]): youtubeService.
     })
 }
 
-const mapYoutubeTrackToSpotifyTrack = async (
-    track: youtubeService.YoutubeTrack,
-    spotifyAccessToken: string
-): Promise<spotifyService.SpotifyTrack> => {
+const mapYoutubeTrackToSpotifyTrack = async (track: youtubeService.YoutubeTrack, spotifyAccessToken: string): Promise<YoutubeSpotifyMap> => {
     const getFirstWords = (text: string, count: number): string => {
         return text?.split(/\s+/).slice(0, count).join(" ") || "";
     };
@@ -87,57 +67,33 @@ const mapYoutubeTrackToSpotifyTrack = async (
         `${track.name} ${getFirstWords(track.description, 3)}`
     ];
 
+    let result = null;
     for (const query of strategies) {
-        const result = await spotifyService.searchTrack(query, spotifyAccessToken);
-
-        if (!result) {
-            continue;
+        result = await spotifyService.searchTrack(query, spotifyAccessToken);
+        if (result) {
+            break;
         }
-        return result;
     }
 
-    throw new Error(`No Spotify results found for "${track.name}" after all strategies`);
+    if (!result) {
+        try {
+            const aiResult = await getSpotifyTrackFromAI(track, spotifyAccessToken);
+            result = aiResult;
+        }
+        catch (error) {
+            console.warn(`No AI result for Youtube track ${track.name}.`);
+        }
+    }
+
+    return { track, result };
 };
 
-const youtubeToSpotifyMapper = async (normalizedPlaylist: youtubeService.YoutubePlaylist, spotifyAccessToken: string):
-    Promise<{ foundTracks: spotifyService.SpotifyTrack[]; notFoundTracks: youtubeService.YoutubeTrack[]; }> => {
-    const foundTracks: spotifyService.SpotifyTrack[] = [];
-    const notFoundTracks: youtubeService.YoutubeTrack[] = [];
+const youtubeToSpotifyMapper = async (normalizedPlaylist: youtubeService.YoutubePlaylist, spotifyAccessToken: string): Promise<YoutubeSpotifyMap[]> => {
+    const mappingPromises = normalizedPlaylist.tracks.map(track => mapYoutubeTrackToSpotifyTrack(track, spotifyAccessToken));
+    return await Promise.all(mappingPromises);
 
-    // await Promise.all(
-    //     normalizedPlaylist.tracks.map(async (track) => {
-    //         try {
-    //             const spTrack = await mapYoutubeTrackToSpotifyTrack(track, spotifyAccessToken);
-    //             foundTracks.push(spTrack);
-    //         } catch (error) {
-    //             console.warn(`No result for YouTube track "${track.name}" by channel "${track.channelName}"`);
-    //             notFoundTracks.push(track);
-    //         }
-    //     })
-    // );
-    normalizedPlaylist.tracks.forEach(track => notFoundTracks.push(track));
-
-    return { foundTracks, notFoundTracks };
-};
-
-const getAllSpotifyTracksFromAI = async (tracks: youtubeService.YoutubeTrack[], accessToken: string):
-    Promise<{ aiFoundTracks: spotifyService.SpotifyTrack[], stillNotFoundTracks: youtubeService.YoutubeTrack[] }> => {
-    const aiFoundTracks: spotifyService.SpotifyTrack[] = [];
-    const stillNotFoundTracks: youtubeService.YoutubeTrack[] = [];
-
-    await Promise.all(
-        tracks.map(async (track) => {
-            try {
-                const spTrack = await getSpotifyTrackFromAI(track, accessToken);
-                aiFoundTracks.push(spTrack);
-            } catch (error) {
-                console.warn(`Still no AI result for track "${track.name}"`);
-                stillNotFoundTracks.push(track);
-            }
-        })
-    );
-
-    return { aiFoundTracks: aiFoundTracks, stillNotFoundTracks };
+    // for testing AI purposes
+    //return normalizedPlaylist.tracks.map(track => ({ track, result: null }));
 };
 
 const getSpotifyTrackFromAI = async (track: youtubeService.YoutubeTrack, accessToken: string, fallbackModel: string = "deepseek/deepseek-r1-0528-qwen3-8b:free"):
