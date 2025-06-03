@@ -15,7 +15,10 @@
         "../../shared/*"
       ]
     },
-    "types": [],
+    "types": [
+      "@types/react",
+      "@types/react-dom"
+    ],
     "esModuleInterop": true
   },
   "include": [

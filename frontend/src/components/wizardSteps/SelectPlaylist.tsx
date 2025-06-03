@@ -1,12 +1,10 @@
 import { Box, Card, Typography, Button } from "@mui/material";
 import LoadingIndicator from "../LoadingIndicator";
 import { useTheme } from "@mui/material/styles";
-import { PlatformKey } from "../../constants";
 import { platformData } from "../../constants";
 import { useState, useEffect } from "react";
 import { PlaylistFetcher, UserFetcher } from "../../services/fetchers";
-import { TrackUI } from "@shared/types";
-import { Playlist } from "@shared/types";
+import { TrackUI, Playlist, PlatformKey } from "@shared/types";
 
 interface SelectPlaylistProps {
     onChange: (value: Playlist) => void;
@@ -95,9 +93,9 @@ const SelectPlaylist: React.FC<SelectPlaylistProps> = ({ onChange }) => {
                                         <Typography variant="body2">First five tracks:</Typography>
                                         {playlist.tracks.slice(0, 5).map((trackItem: TrackUI, index: number) => (
                                             <Typography key={index} variant="body2">
-                                                {`${trackItem.artistsNames
-                                                    && trackItem.artistsNames[0] !== ""
-                                                    ? trackItem.artistsNames.join(", ") + " - " : ""}${trackItem.name}`}
+                                                {`${trackItem.artists
+                                                    && trackItem.artists[0] !== ""
+                                                    ? trackItem.artists.join(", ") + " - " : ""}${trackItem.name}`}
                                             </Typography>
                                         ))}
                                         <img src={playlist.imageUrl} alt="Playlist cover" style={{ width: "20%", height: "auto" }} />

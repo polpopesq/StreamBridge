@@ -1,10 +1,10 @@
 import SpotifyLogo from "./assets/logos/spotifyLogo.svg.png";
 import YoutubeMusicLogo from "./assets/logos/youtubeMusicLogo.svg.png";
 import PlainTextLogo from "./assets/logos/txtLogo.png";
+import { PlatformKey } from "@shared/types";
 
 export const BACKEND_URL = "http://localhost:8080/api/v1";
 
-export type PlatformKey = 'spotify' | 'youtube' | 'txt';
 export const platformData: Record<PlatformKey, { name: string, description: string; logo: string }> = {
   "spotify": {
     name: "Spotify",

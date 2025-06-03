@@ -1,8 +1,7 @@
 import { Response } from "express";
 import * as transferService from "../services/transferServices.ts";
 import { AuthenticatedRequest } from "middlewares/tokenMiddleware";
-export type PlatformKey = 'spotify' | 'youtube' | 'txt';
-
+import { PlatformKey } from "@shared/types.js";
 
 export const transferPlaylist = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;

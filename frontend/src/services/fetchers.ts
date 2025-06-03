@@ -1,7 +1,6 @@
 import { SpotifyService } from "./spotifyService";
 import { YoutubeService } from "./youtubeService";
-import { PlatformKey } from "../constants";
-import { Playlist } from "@shared/types";
+import { Playlist, PlatformKey } from "@shared/types";
 
 export const PlaylistFetcher: Record<PlatformKey, () => Promise<Playlist[] | null>> = {
     "spotify": SpotifyService.getUserPlaylists,

@@ -1,7 +1,7 @@
 import PlatformCardsContainer from "../PlatformCardsContainer";
 import { Box, Typography } from "@mui/material";
 import { useEffect, useState } from "react";
-import { PlatformKey } from "../../constants";
+import { PlatformKey } from "@shared/types";
 
 interface SelectSourceProps {
     onChange: (platform: PlatformKey) => void;

@@ -3,17 +3,13 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { Stepper, Step, StepLabel, Box, Card, CardContent } from "@mui/material";
 import SelectPlatform from "../components/wizardSteps/SelectPlatform";
 import SelectPlaylist from "../components/wizardSteps/SelectPlaylist";
-import { BACKEND_URL, PlatformKey } from "../constants";
+import { BACKEND_URL } from "../constants";
 import { SnackbarAlert } from "../components/SnackbarAlert";
-import { Playlist } from "@shared/types";
+import { Playlist, TransferData, PlatformKey } from "@shared/types";
 
 const steps = ["Sursă", "Playlist", "Destinație"];
 
-export interface TransferData {
-    sourcePlatform: PlatformKey | null;
-    selectedPlaylist: Playlist | null;
-    destinationPlatform: PlatformKey | null;
-}
+
 
 export default function TransferWizard() {
     const [searchParams, setSearchParams] = useSearchParams();

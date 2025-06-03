@@ -1,12 +1,14 @@
 import { Box, Typography, useTheme } from "@mui/material";
 import { useEffect } from "react";
-import type { TransferData } from "./TransferWizard";
+import { TransferData } from "@shared/types";
 import LoadingIndicator from "../components/LoadingIndicator";
 import { transferPlaylist } from "../services/transferService";
+import { useNavigate } from "react-router-dom";
 
 const LoadingScreen = () => {
     const theme = useTheme();
     const transferData = JSON.parse(localStorage.getItem("transferData") || "") as TransferData;
+    const navigate = useNavigate();
 
     useEffect(() => {
         document.body.classList.add(theme.palette.mode === "dark" ? "theme-dark" : "theme-light");
@@ -17,6 +19,7 @@ const LoadingScreen = () => {
         const transfer = async () => {
             if (!transferData) {
                 console.error("Transfer data is missing");
+                navigate("/transfera");
                 return;
             }
 
@@ -24,18 +27,22 @@ const LoadingScreen = () => {
 
             if (!sourcePlatform || !destinationPlatform || !selectedPlaylist) {
                 console.error("Transfer data is incomplete");
+                navigate("/transfera");
                 return;
             }
 
             try {
                 console.log("Transfer started with data:", transferData);
-                await transferPlaylist(sourcePlatform, destinationPlatform, selectedPlaylist.id);
+                const response = await transferPlaylist(sourcePlatform, destinationPlatform, selectedPlaylist.id);
+                console.log("transfer res:");
+                console.log(response);
+                navigate("/checkout", { state: { mappings: response } });
+                return;
             } catch (error) {
                 console.error("Error during transfer:", error);
             }
         }
         transfer();
-        console.log("Transfer started");
         return;
     }, [])
 

@@ -2,17 +2,9 @@ import SpotifyWebApi from "spotify-web-api-node";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
-import { Playlist, TrackUI } from "@shared/types";
+import { SpotifyPlaylist, SpotifyTrack } from "@shared/types";
 
 dotenv.config();
-
-export interface SpotifyTrack extends TrackUI {
-  spotifyId: string;
-}
-
-export interface SpotifyPlaylist extends Omit<Playlist, "tracks"> {
-  tracks: SpotifyTrack[];
-}
 
 export class SpotifyAuthRequiredError extends Error {
   constructor() {
@@ -158,7 +150,7 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
   };
 }
 
-const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
+const simplifyPlaylist = (playlist: any): Omit<SpotifyPlaylist, "tracks"> => ({
   id: playlist.id,
   name: playlist.name,
   imageUrl: playlist.images?.[0]?.url ?? "",
@@ -168,7 +160,7 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
 export const simplifyTrack = (item: any): SpotifyTrack => ({
   spotifyId: item.track.id,
   name: item.track.name,
-  artistsNames: item.track.artists.map((artist: any) => artist.name),
+  artists: item.track.artists.map((artist: any) => artist.name),
 });
 
 const getPlaylistTracks = async (playlistId: string, accessToken: string): Promise<SpotifyTrack[]> => {
@@ -197,7 +189,7 @@ const getPlaylistTracks = async (playlistId: string, accessToken: string): Promi
   return simplifiedTracks;
 }
 
-const getUserPlaylists = async (userId: number): Promise<Omit<Playlist, "tracks">[]> => {
+const getUserPlaylists = async (userId: number): Promise<Omit<SpotifyPlaylist, "tracks">[]> => {
   const accessToken = await getAccessToken(userId);
 
   const response = await fetch("https://api.spotify.com/v1/me/playlists", {
@@ -307,7 +299,7 @@ export const searchTrack = async (query: string, accessToken: string): Promise<S
     return {
       spotifyId: item.id,
       name: item.name,
-      artistsNames: item.artists.map((artist: any) => artist.name)
+      artists: item.artists.map((artist: any) => artist.name)
     }
   } else {
     console.warn(`No result for Spotify query: "${query}"`);

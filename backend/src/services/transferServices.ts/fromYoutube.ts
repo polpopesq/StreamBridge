@@ -1,12 +1,14 @@
 import * as youtubeService from "../youtubeService";
 import * as spotifyService from "../spotifyService";
+import { SpotifyTrack, YoutubeTrack, YoutubePlaylist } from "@shared/types";
 import dotenv from "dotenv";
+import { getSpotifyTrackFromAI } from "./aiQuery";
 
 dotenv.config();
 
 interface YoutubeSpotifyMap {
-    track: youtubeService.YoutubeTrack;
-    result: spotifyService.SpotifyTrack | null;
+    track: YoutubeTrack;
+    result: SpotifyTrack | null;
 };
 
 export const youtubeToSpotifyTransfer = async (userId: number, playlistId: string):
@@ -28,7 +30,7 @@ export const youtubeToTxtTransfer = async (userId: number, playlistId: string): 
     return lines.join("\n");
 };
 
-const normalizeTracks = (tracks: youtubeService.YoutubeTrack[]): youtubeService.YoutubeTrack[] => {
+const normalizeTracks = (tracks: YoutubeTrack[]): YoutubeTrack[] => {
     const cleanTitle = (title: string): string => {
         let cleaned = title.replace(/\(.*?\)|\[.*?\]/g, "");
         cleaned = cleaned.replace(/\b(feat\.?|ft\.?|featuring|official|video|audio|lyrics|HD|HQ|remix|full|explicit|clean)\b/gi, "");
@@ -57,7 +59,7 @@ const normalizeTracks = (tracks: youtubeService.YoutubeTrack[]): youtubeService.
     })
 }
 
-const mapYoutubeTrackToSpotifyTrack = async (track: youtubeService.YoutubeTrack, spotifyAccessToken: string): Promise<YoutubeSpotifyMap> => {
+const mapYoutubeTrackToSpotifyTrack = async (track: YoutubeTrack, spotifyAccessToken: string): Promise<YoutubeSpotifyMap> => {
     const getFirstWords = (text: string, count: number): string => {
         return text?.split(/\s+/).slice(0, count).join(" ") || "";
     };
@@ -76,19 +78,17 @@ const mapYoutubeTrackToSpotifyTrack = async (track: youtubeService.YoutubeTrack,
     }
 
     if (!result) {
-        try {
-            const aiResult = await getSpotifyTrackFromAI(track, spotifyAccessToken);
-            result = aiResult;
-        }
-        catch (error) {
-            console.warn(`No AI result for Youtube track ${track.name}.`);
-        }
+        const prompt = buildPromptYoutubeToSpotify(track);
+
+        const aiResult = await getSpotifyTrackFromAI(prompt, spotifyAccessToken);
+        if (!aiResult) console.warn(`No AI result for track ${track.name}`);
+        result = aiResult;
     }
 
     return { track, result };
 };
 
-const youtubeToSpotifyMapper = async (normalizedPlaylist: youtubeService.YoutubePlaylist, spotifyAccessToken: string): Promise<YoutubeSpotifyMap[]> => {
+const youtubeToSpotifyMapper = async (normalizedPlaylist: YoutubePlaylist, spotifyAccessToken: string): Promise<YoutubeSpotifyMap[]> => {
     const mappingPromises = normalizedPlaylist.tracks.map(track => mapYoutubeTrackToSpotifyTrack(track, spotifyAccessToken));
     return await Promise.all(mappingPromises);
 
@@ -96,38 +96,6 @@ const youtubeToSpotifyMapper = async (normalizedPlaylist: youtubeService.Youtube
     //return normalizedPlaylist.tracks.map(track => ({ track, result: null }));
 };
 
-const getSpotifyTrackFromAI = async (track: youtubeService.YoutubeTrack, accessToken: string, fallbackModel: string = "deepseek/deepseek-r1-0528-qwen3-8b:free"):
-    Promise<spotifyService.SpotifyTrack> => {
-    const prompt = buildPromptYoutubeToSpotify(track);
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-            Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-            model: fallbackModel,
-            messages: [{ role: "user", content: prompt }],
-            temperature: 0.7
-        })
-    });
-
-    const json = await response.json();
-    const content = json.choices?.[0]?.message?.content || "";
-
-    if (!content || content === "") {
-        throw new Error(`AI fallback found no Spotify equivalent for track "${track.name}"`);
-    }
-
-    const spotifyResult = await spotifyService.searchTrack(content, accessToken);
-    if (!spotifyResult) {
-        throw new Error(`AI fallback found no Spotify equivalent for track "${track.name}"`);
-    }
-
-    return spotifyResult;
-};
-
-const buildPromptYoutubeToSpotify = (track: youtubeService.YoutubeTrack): string => {
+const buildPromptYoutubeToSpotify = (track: YoutubeTrack): string => {
     return `Knowing Youtube track name ${track.name}. Give me the song in the format artist songName.`;
 };

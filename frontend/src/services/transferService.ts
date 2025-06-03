@@ -1,10 +1,7 @@
-import { BACKEND_URL, PlatformKey } from "../constants";
+import { BACKEND_URL } from "../constants";
+import { Mapping, PlatformKey } from "@shared/types";
 
-export const transferPlaylist = async (
-    sourcePlatform: PlatformKey,
-    destinationPlatform: PlatformKey,
-    playlistId: string,
-) => {
+export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, playlistId: string): Promise<Mapping[]> => {
     const response = await fetch(`${BACKEND_URL}/transfer`, {
         method: "POST",
         body: JSON.stringify({
@@ -18,9 +15,11 @@ export const transferPlaylist = async (
         credentials: "include"
     });
 
+    const transferJson = await response.json();
+
     if (!response.ok) {
-        throw new Error("Failed to transfer playlist");
+        throw new Error("Failed to transfer playlist: ", transferJson);
     }
 
-    return response.json();
+    return transferJson;
 }

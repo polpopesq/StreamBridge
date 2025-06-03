@@ -1,4 +1,6 @@
+import { YoutubePlaylist, Playlist, TrackUI } from "@shared/types";
 import { BACKEND_URL } from "../constants"
+import { youtubeToPlaylist } from "../../../shared/typeConverters";
 
 export const YoutubeService = {
     getUser: async (): Promise<{ youtube_user_id: string; youtube_display_name: string } | null> => {
@@ -12,17 +14,28 @@ export const YoutubeService = {
         }
     },
 
-    getUserPlaylists: async (): Promise<any[] | null> => {
+    getUserPlaylists: async (): Promise<Playlist[] | null> => {
         try {
             const res = await fetch(`${BACKEND_URL}/youtube/playlists`, { credentials: "include" });
-            const data = await res.json();
-
-            console.log("Playlists YouTube:", data);
-
-            return data;
+            const data: YoutubePlaylist[] = await res.json();
+            const normalizedPlaylists = data.map(playlist => youtubeToPlaylist(playlist));
+            return normalizedPlaylists;
         } catch (error) {
             console.error("Eroare la fetch playlists YouTube:", error);
             return null;
+        }
+    },
+
+    searchYoutubeTracks: async (query: string): Promise<TrackUI[]> => {
+        try {
+            const res = await fetch(`${BACKEND_URL}/youtube/search?query=${encodeURIComponent(query)}`, {
+                credentials: "include"
+            });
+            const data: TrackUI[] = await res.json();
+            return data;
+        } catch (error) {
+            console.error("Eroare la căutarea în YouTube:", error);
+            return [];
         }
     }
 };

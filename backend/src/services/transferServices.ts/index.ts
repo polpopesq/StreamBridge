@@ -1,38 +1,42 @@
-
-import { PlatformKey } from "../../controllers/transferController";
+import { Mapping, PlatformKey } from "@shared/types";
 import { spotifyToYoutubeTransfer, spotifyToTxtTransfer } from "./fromSpotify";
 import { youtubeToSpotifyTransfer, youtubeToTxtTransfer } from "./fromYoutube";
 import { txtToSpotifyTransfer, txtToYoutubeTransfer } from "./fromTxt";
+import { youtubeToTrackUI, spotifyToTrackUI } from "../../../../shared/typeConverters";
 
 type TransferHandler = (userId: number, playlistId: string) => Promise<any>;
 
 const transferHandlers: Record<string, TransferHandler> = {
-    "spotify|youtube": async (userId: number, playlistId: string) => {
-        return await spotifyToYoutubeTransfer(userId, playlistId);
+    "spotify|youtube": async (userId: number, playlistId: string): Promise<Mapping[]> => {
+        const spotifyYoutubeMap = await spotifyToYoutubeTransfer(userId, playlistId);
+        return spotifyYoutubeMap.map(mapping => ({
+            sourceTrack: spotifyToTrackUI(mapping.track),
+            destinationTrack: mapping.result ? youtubeToTrackUI(mapping.result) : null
+        }));
     },
-    "youtube|spotify": async (userId, playlistId) => {
-        return await youtubeToSpotifyTransfer(userId, playlistId);
+    "youtube|spotify": async (userId, playlistId): Promise<Mapping[]> => {
+        const youtubeSpotifyMap = await youtubeToSpotifyTransfer(userId, playlistId);
+        return youtubeSpotifyMap.map(mapping => ({
+            sourceTrack: youtubeToTrackUI(mapping.track),
+            destinationTrack: mapping.result ? spotifyToTrackUI(mapping.result) : null
+        }));
     },
-    "youtube|txt": async (userId, playlistId) => {
+    "youtube|txt": async (userId, playlistId): Promise<string> => {
         return await youtubeToTxtTransfer(userId, playlistId);
     },
-    "txt|youtube": async (userId, txtContent) => {
+    "txt|youtube": async (userId, txtContent): Promise<Mapping[]> => {
         return await txtToYoutubeTransfer(userId, txtContent);
     },
-    "spotify|txt": async (userId, playlistId) => {
+    "spotify|txt": async (userId, playlistId): Promise<string> => {
         return await spotifyToTxtTransfer(userId, playlistId);
     },
-    "txt|spotify": async (userId, txtContent) => {
+    "txt|spotify": async (userId, txtContent): Promise<Mapping[]> => {
         return await txtToSpotifyTransfer(userId, txtContent);
     },
 };
 
-export const transferPlaylist = async (
-    userId: number,
-    source: PlatformKey,
-    target: PlatformKey,
-    playlistId: string
-) => {
+export const transferPlaylist = async (userId: number, source: PlatformKey, target: PlatformKey, playlistId: string)
+    : Promise<{ source: PlatformKey, destination: PlatformKey, mapping: Mapping[] }> => {
     if (source === target) {
         throw new Error("Source and target platforms must be different");
     }
@@ -41,7 +45,7 @@ export const transferPlaylist = async (
     const handler = transferHandlers[key];
 
     if (!handler) {
-        throw new Error(`Unsupported platform transfer: ${source} → ${target}`);
+        throw new Error(`Unsupported platform transfer: ${source} -> ${target}`);
     }
 
     try {

@@ -1,18 +1,7 @@
 import dotenv from "dotenv";
 import { pool } from "../config/db";
 import crypto from "crypto";
-import { Playlist } from "@shared/types";
-
-export interface YoutubeTrack {
-    name: string;
-    channelName: string;
-    youtubeId: string;
-    description: string;
-}
-
-export interface YoutubePlaylist extends Omit<Playlist, "tracks"> {
-    tracks: YoutubeTrack[];
-}
+import { YoutubePlaylist, YoutubeTrack } from "@shared/types";
 
 dotenv.config();
 
@@ -167,7 +156,7 @@ export const getAccessToken = async (userId: number): Promise<string> => {
     return refreshed.accessToken;
 };
 
-const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
+const simplifyPlaylist = (playlist: any): Omit<YoutubePlaylist, "tracks"> => ({
     id: playlist.id,
     name: playlist.snippet.title,
     imageUrl: playlist.snippet.thumbnails.default.url ?? "",
@@ -177,7 +166,7 @@ const simplifyPlaylist = (playlist: any): Omit<Playlist, "tracks"> => ({
 const simplifyTrack = (item: any): YoutubeTrack => ({
     name: item.snippet.title,
     channelName: item.snippet.videoOwnerChannelTitle,
-    youtubeId: item.id.videoId,
+    youtubeId: typeof item.id === "string" ? item.id : item.id.videoId,
     description: item.snippet.description
 });
 
@@ -334,57 +323,3 @@ export const searchTrack = async (query: string, accessToken: string): Promise<Y
 
     return simplifyTrack(item);
 }
-
-// export interface YoutubeVideoDetails {
-//     youtubeId: string;
-//     name: string;
-//     description: string;
-//     channelName: string;
-//     duration: number;
-//     viewCount: number;
-//     isLicensed: boolean;
-// }
-
-// export const getVideoDetails = async (videoId: string, accessToken: string): Promise<YoutubeVideoDetails> => {
-
-//     const isoToSeconds = (duration: string): number => {
-//         const regex = /PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/;
-//         const matches = duration.match(regex);
-//         if (!matches) return 0;
-
-//         const hours = parseInt(matches[1] || "0", 10);
-//         const minutes = parseInt(matches[2] || "0", 10);
-//         const seconds = parseInt(matches[3] || "0", 10);
-
-//         return hours * 3600 + minutes * 60 + seconds;
-//     };
-
-//     const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails,statistics,status&id=${videoId}`;
-
-//     const response = await fetch(url, {
-//         method: "GET",
-//         headers: {
-//             Authorization: `Bearer ${accessToken}`,
-//             Accept: "application/json"
-//         }
-//     });
-
-//     const data = await response.json();
-
-//     if (!data.items || data.items.length === 0) {
-//         throw new Error(`Video with ID ${videoId} not found`);
-//     }
-
-//     const video = data.items[0];
-//     const { snippet, contentDetails, statistics, status } = video;
-
-//     return {
-//         youtubeId: videoId,
-//         name: snippet.title,
-//         description: snippet.description,
-//         channelName: snippet.channelTitle,
-//         duration: isoToSeconds(contentDetails.duration),
-//         viewCount: parseInt(statistics.viewCount ?? "0"),
-//         isLicensed: contentDetails.licensedContent ?? false,
-//     };
-// };
