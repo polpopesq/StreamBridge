@@ -32,7 +32,8 @@ export const spotifyToTxtTransfer = async (userId: number, playlistId: string): 
 
 const mapSpotifyTrackToYoutubeTrack = async (track: SpotifyTrack, youtubeAccessToken: string): Promise<SpotifyYoutubeMap> => {
     const query = `${track.name} ${track.artists.join(" ")}`;
-    let result = await youtubeService.searchTrack(query, youtubeAccessToken);
+    const youtubeQuery = await youtubeService.searchTracks(query, youtubeAccessToken, 1);
+    let result = youtubeQuery ? youtubeQuery[0] : null;
 
     if (!result) {
         try {

@@ -55,5 +55,6 @@ export const getSpotifyTrackFromAI = async (prompt: string, accessToken: string)
 
     if (!content || content === "") return null;
 
-    return await spotifyService.searchTrack(content, accessToken);
+    const spotifyResult = await spotifyService.searchTracks(content, accessToken, 1);
+    return spotifyResult ? spotifyResult[0] : null;
 };

@@ -293,12 +293,12 @@ export const getPlaylistById = async (userId: number, playlistId: string): Promi
     }
 };
 
-export const searchTrack = async (query: string, accessToken: string): Promise<YoutubeTrack | null> => {
+export const searchTracks = async (query: string, accessToken: string, limit: number): Promise<YoutubeTrack[] | null> => {
     const url = new URL("https://www.googleapis.com/youtube/v3/search");
     url.searchParams.set("part", "snippet");
-    url.searchParams.set("q", query);
+    url.searchParams.set("q", encodeURIComponent(query));
     url.searchParams.set("type", "video");
-    url.searchParams.set("maxResults", "1");
+    url.searchParams.set("maxResults", limit.toString());
 
     const res = await fetch(url.toString(), {
         headers: {
@@ -314,12 +314,12 @@ export const searchTrack = async (query: string, accessToken: string): Promise<Y
     }
 
     const data = await res.json();
-    const item = data.items?.[0];
+    const items = data?.items;
 
-    if (!item) {
+    if (!items) {
         console.warn(`No YouTube results found for "${query}"`);
         return null;
     }
 
-    return simplifyTrack(item);
+    return items.map((item: any) => simplifyTrack(item));
 }

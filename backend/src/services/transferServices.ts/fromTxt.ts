@@ -9,8 +9,8 @@ export const txtToSpotifyTransfer = async (userId: number, txtContent: string): 
     const spotifyAccessToken = await spotifyService.getAccessToken(userId);
 
     const trackPromises = lines.map(async line => {
-        const queryResult = await spotifyService.searchTrack(line, spotifyAccessToken);
-        if (queryResult) return { sourceTrack: txtToTrack(line), destinationTrack: spotifyToTrackUI(queryResult) };
+        const queryResult = await spotifyService.searchTracks(line, spotifyAccessToken, 1);
+        if (queryResult) return { sourceTrack: txtToTrack(line), destinationTrack: spotifyToTrackUI(queryResult[0]) };
         const aiResult = await getSpotifyTrackFromAI(line, spotifyAccessToken);
         return { sourceTrack: txtToTrack(line), destinationTrack: aiResult ? spotifyToTrackUI(aiResult) : null };
     })
@@ -23,8 +23,8 @@ export const txtToYoutubeTransfer = async (userId: number, txtContent: string): 
     const lines = txtContent.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
     const youtubeAccessToken = await youtubeService.getAccessToken(userId);
     const trackPromises = lines.map(async line => {
-        const queryResult = await youtubeService.searchTrack(line, youtubeAccessToken);
-        if (queryResult) return { sourceTrack: txtToTrack(line), destinationTrack: youtubeToTrackUI(queryResult) };
+        const queryResult = await youtubeService.searchTracks(line, youtubeAccessToken, 1);
+        if (queryResult) return { sourceTrack: txtToTrack(line), destinationTrack: youtubeToTrackUI(queryResult[0]) };
         const aiResult = await getYoutubeTrackFromAI(line, youtubeAccessToken);
         return { sourceTrack: txtToTrack(line), destinationTrack: aiResult ? youtubeToTrackUI(aiResult) : null };
     })

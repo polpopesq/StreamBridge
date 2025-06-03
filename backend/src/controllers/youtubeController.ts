@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
-import * as ytService from "../services/youtubeService";
+import * as youtubeService from "../services/youtubeService";
+import { access } from "fs";
 
 export const login = (req: Request, res: Response) => {
     const step = req.query.step as string || "0";
-    const { url, csrfToken } = ytService.prepareLoginRedirect(step);
+    const { url, csrfToken } = youtubeService.prepareLoginRedirect(step);
 
     res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
     res.redirect(url);
@@ -34,7 +35,7 @@ export const callback = async (req: AuthenticatedRequest, res: Response): Promis
         return;
     }
 
-    await ytService.exchangeCodeForTokens(code, userId);
+    await youtubeService.exchangeCodeForTokens(code, userId);
     res.clearCookie("oauth_state");
     res.redirect(`${process.env.FRONTEND_URL}/transfera?step=${stepNumber + 1}`);
 };
@@ -42,11 +43,11 @@ export const callback = async (req: AuthenticatedRequest, res: Response): Promis
 export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;
     try {
-        const playlists = await ytService.getPlaylistsWithTracksFromYoutube(userId);
+        const playlists = await youtubeService.getPlaylistsWithTracksFromYoutube(userId);
         res.status(200).json(playlists);
     } catch (error) {
-        if (error instanceof ytService.YouTubeAuthRequiredError) {
-            const { url, csrfToken } = ytService.prepareLoginRedirect();
+        if (error instanceof youtubeService.YouTubeAuthRequiredError) {
+            const { url, csrfToken } = youtubeService.prepareLoginRedirect();
             res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
             return res.redirect(url);
         }
@@ -57,14 +58,33 @@ export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Res
 export const getCurrentUser = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;
     try {
-        const userData = await ytService.getYoutubeUser(userId);
+        const userData = await youtubeService.getYoutubeUser(userId);
         res.status(200).json({ "youtube_display_name": userData.display_name });
     } catch (error) {
-        if (error instanceof ytService.YouTubeAuthRequiredError) {
-            const { url, csrfToken } = ytService.prepareLoginRedirect();
+        if (error instanceof youtubeService.YouTubeAuthRequiredError) {
+            const { url, csrfToken } = youtubeService.prepareLoginRedirect();
             res.cookie("oauth_state", csrfToken, { httpOnly: true, secure: true });
             return res.redirect(url);
         }
         res.status(500).json({ "message": "Unexpected error fetching youtube user data." })
     }
+}
+
+export const search = async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.user_id as number;
+    const query = req.query.query as string;
+    if (!query) {
+        res.status(400).json({ error: "Missing query parameter" });
+        return;
+    }
+
+    const accessToken = await youtubeService.getAccessToken(userId);
+
+    const youtubeTracks = await youtubeService.searchTracks(query, accessToken, 10);
+    if (!youtubeTracks) {
+        res.status(404).json({ message: `No Youtube tracks found for query ${query}` });
+        return;
+    }
+
+    res.status(200).json(youtubeTracks);
 }

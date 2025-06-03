@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as spotifyService from "../services/spotifyService";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
 import dotenv from "dotenv";
+import { SpotifyPlaylist } from "@shared/types";
 
 dotenv.config();
 
@@ -73,7 +74,24 @@ export const getPlaylistsWithTracks = async (req: AuthenticatedRequest, res: Res
   }
 }
 
-export const search = (req: Request, res: Response) => { };
+export const search = async (req: AuthenticatedRequest, res: Response) => {
+  const userId = req.user?.user_id as number;
+  const query = req.query.query as string;
+  if (!query) {
+    res.status(400).json({ error: "Missing query parameter" });
+    return;
+  }
+
+  const accessToken = await spotifyService.getAccessToken(userId);
+
+  const spotifyTracks = await spotifyService.searchTracks(query, accessToken, 10);
+  if (!spotifyTracks) {
+    res.status(404).json({ message: `No Spotify tracks found for query ${query}` });
+    return;
+  }
+
+  res.status(200).json(spotifyTracks);
+};
 
 export const createPlaylist = (req: Request, res: Response) => { };
 

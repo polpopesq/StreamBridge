@@ -71,8 +71,9 @@ const mapYoutubeTrackToSpotifyTrack = async (track: YoutubeTrack, spotifyAccessT
 
     let result = null;
     for (const query of strategies) {
-        result = await spotifyService.searchTrack(query, spotifyAccessToken);
+        result = await spotifyService.searchTracks(query, spotifyAccessToken, 1);
         if (result) {
+            result = result[0];
             break;
         }
     }
@@ -84,7 +85,6 @@ const mapYoutubeTrackToSpotifyTrack = async (track: YoutubeTrack, spotifyAccessT
         if (!aiResult) console.warn(`No AI result for track ${track.name}`);
         result = aiResult;
     }
-
     return { track, result };
 };
 

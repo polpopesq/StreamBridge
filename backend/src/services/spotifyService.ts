@@ -274,11 +274,11 @@ export const getTrackDetails = async (trackId: string, accessToken: string): Pro
   return simplifyTrack(data);
 };
 
-export const searchTrack = async (query: string, accessToken: string): Promise<SpotifyTrack | null> => {
+export const searchTracks = async (query: string, accessToken: string, limit: number): Promise<SpotifyTrack[] | null> => {
   const url = new URL("https://api.spotify.com/v1/search");
-  url.searchParams.set("q", query);
+  url.searchParams.set("q", encodeURIComponent(query));
   url.searchParams.set("type", "track");
-  url.searchParams.set("limit", "1");
+  url.searchParams.set("limit", limit.toString());
 
   const res = await fetch(url.toString(), {
     headers: {
@@ -294,15 +294,11 @@ export const searchTrack = async (query: string, accessToken: string): Promise<S
   }
 
   const data = await res.json();
-  const item = data.tracks?.items?.[0];
-  if (item) {
-    return {
-      spotifyId: item.id,
-      name: item.name,
-      artists: item.artists.map((artist: any) => artist.name)
-    }
+  const items = data.tracks?.items;
+  if (items) {
+    return items.map((item: any) => simplifyTrack(item));
   } else {
-    console.warn(`No result for Spotify query: "${query}"`);
+    console.warn("No spotify results for query ", query);
     return null;
   }
 }
