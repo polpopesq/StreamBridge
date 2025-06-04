@@ -3,6 +3,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
 import { SpotifyPlaylist, SpotifyTrack } from "@shared/types";
+import { isNullOrUndefined } from "util";
 
 dotenv.config();
 
@@ -157,11 +158,18 @@ const simplifyPlaylist = (playlist: any): Omit<SpotifyPlaylist, "tracks"> => ({
   public: playlist.public,
 });
 
-export const simplifyTrack = (item: any): SpotifyTrack => ({
-  spotifyId: item.track.id,
-  name: item.track.name,
-  artists: item.track.artists.map((artist: any) => artist.name),
-});
+export const simplifyTrack = (item: any): SpotifyTrack => {
+  if (item.type === "track") return {
+    spotifyId: item.id,
+    name: item.name,
+    artists: item.artists.map((artist: any) => artist.name)
+  }
+  else return {
+    spotifyId: item.id ? item.id : item.track.id,
+    name: item.track.name,
+    artists: item.track.artists.map((artist: any) => artist.name)
+  }
+}
 
 const getPlaylistTracks = async (playlistId: string, accessToken: string): Promise<SpotifyTrack[]> => {
   const href = `https://api.spotify.com/v1/playlists/${playlistId}/tracks`;
@@ -276,7 +284,7 @@ export const getTrackDetails = async (trackId: string, accessToken: string): Pro
 
 export const searchTracks = async (query: string, accessToken: string, limit: number): Promise<SpotifyTrack[] | null> => {
   const url = new URL("https://api.spotify.com/v1/search");
-  url.searchParams.set("q", encodeURIComponent(query));
+  url.searchParams.set("q", query);
   url.searchParams.set("type", "track");
   url.searchParams.set("limit", limit.toString());
 

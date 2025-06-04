@@ -23,3 +23,7 @@ export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationP
 
     return transferJson;
 }
+
+export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[]): Promise<void> => {
+
+}

@@ -1,6 +1,6 @@
-import { Playlist, SpotifyPlaylist, TrackUI } from "@shared/types";
+import { Playlist, SpotifyPlaylist, SpotifyTrack, TrackUI } from "@shared/types";
 import { BACKEND_URL } from "../constants"
-import { spotifyToPlaylist } from "../../../shared/typeConverters";
+import { spotifyToPlaylist, spotifyToTrackUI } from "../../../shared/typeConverters";
 
 export const SpotifyService = {
     getUser: async (): Promise<{ spotify_user_id: string; spotify_display_name: string } | null> => {
@@ -31,8 +31,8 @@ export const SpotifyService = {
             const res = await fetch(`${BACKEND_URL}/spotify/search?query=${encodeURIComponent(query)}`, {
                 credentials: "include"
             });
-            const data: TrackUI[] = await res.json();
-            return data;
+            const data: SpotifyTrack[] = await res.json();
+            return data.map((track: SpotifyTrack) => spotifyToTrackUI(track))
         } catch (error) {
             console.error("Eroare la căutarea în Spotify:", error);
             return [];

@@ -296,7 +296,7 @@ export const getPlaylistById = async (userId: number, playlistId: string): Promi
 export const searchTracks = async (query: string, accessToken: string, limit: number): Promise<YoutubeTrack[] | null> => {
     const url = new URL("https://www.googleapis.com/youtube/v3/search");
     url.searchParams.set("part", "snippet");
-    url.searchParams.set("q", encodeURIComponent(query));
+    url.searchParams.set("q", query);
     url.searchParams.set("type", "video");
     url.searchParams.set("maxResults", limit.toString());
 

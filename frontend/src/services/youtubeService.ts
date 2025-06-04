@@ -1,6 +1,6 @@
-import { YoutubePlaylist, Playlist, TrackUI } from "@shared/types";
+import { YoutubePlaylist, Playlist, TrackUI, YoutubeTrack } from "@shared/types";
 import { BACKEND_URL } from "../constants"
-import { youtubeToPlaylist } from "../../../shared/typeConverters";
+import { youtubeToPlaylist, youtubeToTrackUI } from "../../../shared/typeConverters";
 
 export const YoutubeService = {
     getUser: async (): Promise<{ youtube_user_id: string; youtube_display_name: string } | null> => {
@@ -31,8 +31,8 @@ export const YoutubeService = {
             const res = await fetch(`${BACKEND_URL}/youtube/search?query=${encodeURIComponent(query)}`, {
                 credentials: "include"
             });
-            const data: TrackUI[] = await res.json();
-            return data;
+            const data: YoutubeTrack[] = await res.json();
+            return data.map((track: YoutubeTrack) => youtubeToTrackUI(track));
         } catch (error) {
             console.error("Eroare la căutarea în YouTube:", error);
             return [];

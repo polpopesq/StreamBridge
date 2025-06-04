@@ -1,14 +1,15 @@
 import { List, ListSubheader, Typography, Box, Divider } from '@mui/material';
 import SongMappingItem from './SongMappingItem';
-import { Mapping } from '@shared/types';
+import { Mapping, PlatformKey } from '@shared/types';
 
 interface Props {
     mappings: Mapping[],
-    onUpdateMapping: (updated: Mapping) => void
+    onUpdateMapping: (updated: Mapping) => void,
+    sourcePlatform: PlatformKey,
+    destinationPlatform: PlatformKey
 }
 
-export default function SongMappingList({ mappings, onUpdateMapping }: Props) {
-    const { sourcePlatform, destinationPlatform } = JSON.parse(localStorage.getItem("transferData") || "")
+export default function SongMappingList({ mappings, onUpdateMapping, sourcePlatform, destinationPlatform }: Props) {
     return (
         <List
             subheader={

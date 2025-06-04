@@ -9,7 +9,8 @@ import {
     Stack,
     List,
     ListItem,
-    ListItemText
+    ListItemText,
+    ListItemButton
 } from '@mui/material';
 
 import { TrackUI, PlatformKey, Mapping } from '../../../shared/types';
@@ -18,7 +19,7 @@ import { YoutubeService } from '../services/youtubeService';
 
 interface Props {
     open: boolean;
-    onClose: (chosenMapping: Mapping) => void;
+    onClose: (chosenMapping: Mapping | null) => void;
     initialMapping: Mapping;
 }
 
@@ -27,6 +28,7 @@ export default function MatchManualDialog({ open, onClose, initialMapping }: Pro
     const [results, setResults] = useState<(TrackUI)[]>([]);
     const [destinationPlatform, setDestinationPlatform] = useState<PlatformKey>('youtube');
     const [mapping, setMapping] = useState<Mapping>(initialMapping);
+    const [selectedTrackId, setSelectedTrackId] = useState<string | null>(null);
 
     useEffect(() => {
         const transferData = localStorage.getItem("transferData");
@@ -49,7 +51,7 @@ export default function MatchManualDialog({ open, onClose, initialMapping }: Pro
     }, [query, destinationPlatform]);
 
     return (
-        <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
+        <Dialog open={open} onClose={() => onClose(mapping)} fullWidth maxWidth="sm">
             <DialogTitle>Select match manually</DialogTitle>
             <DialogContent>
                 <Stack spacing={2} mt={1} alignItems="center">
@@ -60,23 +62,33 @@ export default function MatchManualDialog({ open, onClose, initialMapping }: Pro
                         onChange={(e) => setQuery(e.target.value)}
                         sx={{ width: '70%' }}
                     />
-                    <List sx={{ width: '100%' }}>
-                        {results.map((track) => (
-                            <ListItem
-                                key={track.id}
-                                onClick={() => setMapping({ ...mapping, destinationTrack: track })}
+                    {results.map((track, index) => (
+                        <ListItem key={track.id || `${track.name}-${index}`} disablePadding>
+                            <ListItemButton
+                                selected={selectedTrackId === track.id}
+                                onClick={() => {
+                                    setSelectedTrackId(track.id);
+                                    setMapping({ ...mapping, destinationTrack: track });
+                                }}
                             >
                                 <ListItemText
                                     primary={track.name}
-                                    secondary={track.artists.join(', ')}
+                                    secondary={Array.isArray(track.artists) ? track.artists.join(", ") : "Unknown artist"}
                                 />
-                            </ListItem>
-                        ))}
-                    </List>
+                            </ListItemButton>
+                        </ListItem>
+                    ))}
                 </Stack>
             </DialogContent>
             <DialogActions>
-                <Button onClick={() => onClose(mapping)}>Cancel</Button>
+                <Button onClick={() => onClose(null)}>Cancel</Button>
+                <Button
+                    variant="contained"
+                    disabled={!selectedTrackId}
+                    onClick={() => onClose(mapping)}
+                >
+                    Confirm
+                </Button>
             </DialogActions>
         </Dialog>
     );
