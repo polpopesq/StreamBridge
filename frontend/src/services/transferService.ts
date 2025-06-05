@@ -24,6 +24,20 @@ export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationP
     return transferJson;
 }
 
-export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[]): Promise<void> => {
+export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[], playlistTitle: string): Promise<void> => {
+    const response = await fetch(`${BACKEND_URL}/transfer/proceed`, {
+        method: "POST",
+        body: JSON.stringify({
+            sourcePlatform,
+            destinationPlatform,
+            mappings,
+            playlistTitle
+        }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include"
+    });
 
+    const confirmation = await response.json();
 }

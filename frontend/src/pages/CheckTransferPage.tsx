@@ -1,7 +1,7 @@
-import { Container, Typography, Box, Button } from '@mui/material';
+import { Container, Typography, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent, TextField } from '@mui/material';
 import SongMappingList from '../components/SongMappingList';
 import { Mapping } from '@shared/types';
-import { redirect, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { proceedTransfer } from '../services/transferService';
 
@@ -13,6 +13,8 @@ export default function CheckTransferPage() {
     const navigate = useNavigate();
 
     const [mappings, setMappings] = useState<Mapping[] | undefined>(initialMappings);
+    const [title, setTitle] = useState("");
+    const [openDialog, setOpenDialog] = useState(false);
 
     const updateMapping = (updatedMapping: Mapping) => {
         setMappings(prev =>
@@ -22,8 +24,21 @@ export default function CheckTransferPage() {
         );
     };
 
+    const removeMapping = (mappingToDelete: Mapping) => {
+        if (!mappings) return;
+
+        const filtered = mappings.filter((m) =>
+            !(
+                m.sourceTrack.id === mappingToDelete.sourceTrack.id &&
+                m.destinationTrack?.id === mappingToDelete.destinationTrack?.id
+            )
+        );
+
+        setMappings(filtered);
+    };
+
     const handleProceed = async () => {
-        if (mappings) await proceedTransfer(sourcePlatform, destinationPlatform, mappings);
+        if (mappings) await proceedTransfer(sourcePlatform, destinationPlatform, mappings, title);
     }
 
     if (!mappings) {
@@ -38,7 +53,7 @@ export default function CheckTransferPage() {
                 <Typography variant="h4" gutterBottom>
                     Check Transfer Page
                 </Typography>
-                <SongMappingList mappings={mappings} onUpdateMapping={updateMapping} sourcePlatform={sourcePlatform} destinationPlatform={destinationPlatform} />
+                <SongMappingList mappings={mappings} onUpdateMapping={updateMapping} sourcePlatform={sourcePlatform} destinationPlatform={destinationPlatform} removeMapping={removeMapping} />
             </Container>
             <Button
                 variant="contained"
@@ -52,10 +67,32 @@ export default function CheckTransferPage() {
                     alignSelf: 'center',
                     mx: 'auto'
                 }}
-                onClick={() => handleProceed()}
+                onClick={() => setOpenDialog(true)}
             >
                 Proceed
             </Button>
+            <Dialog open={openDialog}>
+                <DialogTitle>Select new playlist title</DialogTitle>
+                <DialogContent>
+                    <TextField
+                        label="Title"
+                        fullWidth
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        sx={{ width: '70%' }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        disabled={title === ""}
+                        onClick={() => handleProceed()}
+                    >
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 }

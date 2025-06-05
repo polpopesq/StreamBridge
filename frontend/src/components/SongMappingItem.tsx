@@ -10,20 +10,33 @@ import {
 } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import SearchIcon from '@mui/icons-material/Search';
+import PlaylistRemoveIcon from '@mui/icons-material/PlaylistRemove';
+import ReportGmailerrorredIcon from '@mui/icons-material/ReportGmailerrorred';
 import { Mapping } from '@shared/types';
 import MatchManualDialog from './MatchManualDialog';
 
 interface Props {
     mapping: Mapping;
     onUpdateMapping: (updated: Mapping) => void;
+    handleRemoveMapping: (toDelete: Mapping) => void;
 };
 
-export default function SongMappingItem({ mapping, onUpdateMapping }: Props) {
+export default function SongMappingItem({ mapping, onUpdateMapping, handleRemoveMapping }: Props) {
     const [open, setOpen] = useState(false);
 
     return (
         <>
-            <ListItem divider>
+            <ListItem
+                divider
+                sx={{
+                    border: mapping.destinationTrack ? 'none' : '1px solid',
+                    borderColor: mapping.destinationTrack ? 'transparent' : 'error.main',
+                    borderRadius: 1,
+                    px: 2,
+                    py: 1,
+                    my: 1,
+                }}
+            >
                 <Stack
                     direction="row"
                     spacing={2}
@@ -54,15 +67,28 @@ export default function SongMappingItem({ mapping, onUpdateMapping }: Props) {
                             </Typography>
                         )}
                     </Box>
+
+                    <Box display="flex" alignItems="center" gap={1}>
+                        {mapping.destinationTrack === null && (
+                            <Tooltip title="No matching found for this song">
+                                <ReportGmailerrorredIcon color="error" fontSize="small" />
+                            </Tooltip>
+                        )}
+
+                        <Tooltip title="Match manually">
+                            <IconButton onClick={() => setOpen(true)}>
+                                <SearchIcon />
+                            </IconButton>
+                        </Tooltip>
+
+                        <Tooltip title="Remove item">
+                            <IconButton onClick={() => handleRemoveMapping(mapping)}>
+                                <PlaylistRemoveIcon />
+                            </IconButton>
+                        </Tooltip>
+                    </Box>
                 </Stack>
-                <Tooltip title="Match manually">
-                    <IconButton onClick={() => setOpen(true)}>
-                        <SearchIcon />
-                    </IconButton>
-                </Tooltip>
             </ListItem>
-
-
             <MatchManualDialog
                 open={open}
                 onClose={(chosenMapping: Mapping | null) => {

@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { pool } from "../config/db";
 import { SpotifyPlaylist, SpotifyTrack } from "@shared/types";
 import { isNullOrUndefined } from "util";
+import { access } from "fs";
 
 dotenv.config();
 
@@ -309,4 +310,39 @@ export const searchTracks = async (query: string, accessToken: string, limit: nu
     console.warn("No spotify results for query ", query);
     return null;
   }
+}
+
+const addTrackstoPlaylist = async (accessToken: string, playlistId: string, trackIds: string[]) => {
+  const uris = trackIds.map(id => `spotify:track:${id}`);
+
+  await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ uris }),
+  });
+}
+
+const createPlaylist = async (accessToken: string, playlistName: string, isPublic: boolean): Promise<string> => {
+  const res = await fetch('https://api.spotify.com/v1/me/playlists', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ name: playlistName, description: "Created with StreamBridge", public: isPublic }),
+  });
+
+  const data = await res.json();
+  return data.id;
+}
+
+export const postPlaylistWithTracks = async (userId: number, playlistName: string, trackIds: string[], isPublic: boolean) => {
+  const accessToken = await getAccessToken(userId);
+  const playlistId = await createPlaylist(accessToken, playlistName, isPublic);
+
+  await addTrackstoPlaylist(accessToken, playlistId, trackIds);
+  //TODO: finish this
 }

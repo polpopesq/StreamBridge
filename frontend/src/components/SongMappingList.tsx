@@ -6,10 +6,11 @@ interface Props {
     mappings: Mapping[],
     onUpdateMapping: (updated: Mapping) => void,
     sourcePlatform: PlatformKey,
-    destinationPlatform: PlatformKey
+    destinationPlatform: PlatformKey,
+    removeMapping: (toRemove: Mapping) => void
 }
 
-export default function SongMappingList({ mappings, onUpdateMapping, sourcePlatform, destinationPlatform }: Props) {
+export default function SongMappingList({ mappings, onUpdateMapping, sourcePlatform, destinationPlatform, removeMapping }: Props) {
     return (
         <List
             subheader={
@@ -28,7 +29,7 @@ export default function SongMappingList({ mappings, onUpdateMapping, sourcePlatf
                 </ListSubheader>
             }>
             {mappings.map((mapping) => (
-                <SongMappingItem key={mapping.sourceTrack.id} mapping={mapping} onUpdateMapping={onUpdateMapping} />
+                <SongMappingItem key={mapping.sourceTrack.id} mapping={mapping} onUpdateMapping={onUpdateMapping} handleRemoveMapping={removeMapping} />
             ))}
         </List>
     );

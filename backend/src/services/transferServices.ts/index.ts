@@ -3,6 +3,10 @@ import { spotifyToYoutubeTransfer, spotifyToTxtTransfer } from "./fromSpotify";
 import { youtubeToSpotifyTransfer, youtubeToTxtTransfer } from "./fromYoutube";
 import { txtToSpotifyTransfer, txtToYoutubeTransfer } from "./fromTxt";
 import { youtubeToTrackUI, spotifyToTrackUI } from "../../../../shared/typeConverters";
+import * as spotifyService from "../spotifyService";
+import * as youtubeService from "../youtubeService";
+
+import { pool } from "config/db";
 
 type TransferHandler = (userId: number, playlistId: string) => Promise<any>;
 
@@ -57,4 +61,53 @@ export const transferPlaylist = async (userId: number, source: PlatformKey, targ
     }
 };
 
+export const proceedTransfer = async (userId: number, source: PlatformKey, destination: PlatformKey, mappings: Mapping[], playlistTitle: string): Promise<void> => {
+    await insertMappings(mappings, source, destination);
+    const matched = mappings.filter(m => m.destinationTrack !== null);
 
+    switch (destination) {
+        case "spotify":
+            const createdPlaylist = await spotifyService.
+                case "youtube":
+    }
+}
+
+const insertMappings = async (mappings: Mapping[], source: PlatformKey, destination: PlatformKey): Promise<void> => {
+    const client = await pool.connect();
+    try {
+        await client.query("BEGIN");
+
+        for (const mapping of mappings) {
+            if (mapping.destinationTrack) {
+                await client.query(
+                    `INSERT INTO matched_songs (source_platform, destination_platform, source_id, destination_id)
+                 VALUES ($1, $2, $3, $4)`,
+                    [
+                        source,
+                        destination,
+                        mapping.sourceTrack.id,
+                        mapping.destinationTrack.id,
+                    ]
+                );
+            } else {
+                await client.query(
+                    `INSERT INTO matched_songs (source_platform, destination_platform, source_id)
+                 VALUES ($1, $2, $3, $4)`,
+                    [
+                        source,
+                        destination,
+                        mapping.sourceTrack.id,
+                    ]
+                );
+            }
+
+        }
+
+        await client.query("COMMIT");
+    } catch (err) {
+        await client.query("ROLLBACK");
+        console.warn("matched and non matched songs queries failed and rolled back");
+    } finally {
+        client.release();
+    }
+}

@@ -12,24 +12,25 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE TABLE IF NOT EXISTS transfers (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-    source_platform VARCHAR(50),
-    destination_platform VARCHAR(50),
-    playlist_source_id VARCHAR(200),
-    playlist_destination_id VARCHAR(200),
+    source_platform VARCHAR(50) NOT NULL,
+    destination_platform VARCHAR(50) NOT NULL,
+    playlist_source_id VARCHAR(200) NOT NULL,
+    playlist_destination_id VARCHAR(200) NOT NULL,
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS matched_songs (
     id SERIAL PRIMARY KEY,
-    name VARCHAR(50),
-    artists VARCHAR(100),
-    spotify_id VARCHAR(200),
-    youtube_id VARCHAR(200)
+    source_platform VARCHAR(50) NOT NULL,
+    destination_platform VARCHAR(50) NOT NULL,
+    source_id VARCHAR(200) UNIQUE NOT NULL,
+    destination_id VARCHAR(200) UNIQUE NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS non_matched_songs (
     id SERIAL PRIMARY KEY,
-    spotify_id VARCHAR(200),
-    youtube_id VARCHAR(200)
+    source_platform VARCHAR(50) NOT NULL,
+    destination_platform VARCHAR(50) NOT NULL,
+    source_id VARCHAR(200)UNIQUE NOT NULL,
 );

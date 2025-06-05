@@ -1,7 +1,7 @@
 import { Response } from "express";
 import * as transferService from "../services/transferServices.ts";
 import { AuthenticatedRequest } from "middlewares/tokenMiddleware";
-import { PlatformKey } from "@shared/types.js";
+import { Mapping, PlatformKey } from "@shared/types.js";
 
 export const transferPlaylist = async (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user?.user_id as number;
@@ -22,3 +22,23 @@ export const transferPlaylist = async (req: AuthenticatedRequest, res: Response)
         res.status(500).json({ message: "Error transferring playlists" });
     }
 };
+
+export const proceedTransfer = async (req: AuthenticatedRequest, res: Response) => {
+    const userId = req.user?.user_id as number;
+    const sourcePlatform = req.body.sourcePlatform as PlatformKey;
+    const destinationPlatform = req.body.destinationPlatform as PlatformKey;
+    const mappings = req.body.mappings as Mapping[];
+    const playlistTitle = req.body.playlistTitle as string;
+
+    if (!userId || !sourcePlatform || !destinationPlatform || !mappings || !playlistTitle) {
+        res.status(400).json({ message: "Missing required fields" });
+        return;
+    }
+
+    try {
+        const serviceResult = await transferService.proceedTransfer(userId, sourcePlatform, destinationPlatform, mappings, playlistTitle);
+    } catch (error) {
+        console.error("Error finishing transfer:", error);
+        res.status(500).json({ message: "Error finishing transfer" });
+    }
+}
