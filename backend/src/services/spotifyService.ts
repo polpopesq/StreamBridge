@@ -30,7 +30,7 @@ const scopes = [
   "playlist-modify-private",
   "playlist-read-private",
   "user-read-private",
-  "user-read-email"
+  "user-read-email",
 ];
 
 const createLoginURL = (step: string): { url: string; state: string } => {
@@ -312,18 +312,32 @@ export const searchTracks = async (query: string, accessToken: string, limit: nu
   }
 }
 
-const addTrackstoPlaylist = async (accessToken: string, playlistId: string, trackIds: string[]) => {
+const addTracksToPlaylist = async (accessToken: string, playlistId: string, trackIds: string[]) => {
   const uris = trackIds.map(id => `spotify:track:${id}`);
 
-  await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ uris }),
-  });
-}
+  const batchSize = 100;
+
+  for (let i = 0; i < uris.length; i += batchSize) {
+    const batch = uris.slice(i, i + batchSize);
+
+    const res = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}/tracks`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ uris: batch }),
+    });
+
+    if (!res.ok) {
+      const error = await res.text();
+      console.error(`Failed to add batch starting at index ${i}:`, error);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+  }
+};
+
 
 const createPlaylist = async (accessToken: string, playlistName: string, isPublic: boolean): Promise<string> => {
   const res = await fetch('https://api.spotify.com/v1/me/playlists', {
@@ -339,10 +353,11 @@ const createPlaylist = async (accessToken: string, playlistName: string, isPubli
   return data.id;
 }
 
-export const postPlaylistWithTracks = async (userId: number, playlistName: string, trackIds: string[], isPublic: boolean) => {
+export const postPlaylistWithTracks = async (userId: number, playlistName: string, trackIds: string[], isPublic: boolean): Promise<string> => {
   const accessToken = await getAccessToken(userId);
   const playlistId = await createPlaylist(accessToken, playlistName, isPublic);
 
-  await addTrackstoPlaylist(accessToken, playlistId, trackIds);
-  //TODO: finish this
+  await addTracksToPlaylist(accessToken, playlistId, trackIds);
+
+  return playlistId;
 }

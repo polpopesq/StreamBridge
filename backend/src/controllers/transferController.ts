@@ -29,14 +29,16 @@ export const proceedTransfer = async (req: AuthenticatedRequest, res: Response) 
     const destinationPlatform = req.body.destinationPlatform as PlatformKey;
     const mappings = req.body.mappings as Mapping[];
     const playlistTitle = req.body.playlistTitle as string;
+    const isPublic = req.body.isPublic as boolean;
 
-    if (!userId || !sourcePlatform || !destinationPlatform || !mappings || !playlistTitle) {
+    if (!userId || !sourcePlatform || !destinationPlatform || !mappings || !playlistTitle || isPublic === null) {
         res.status(400).json({ message: "Missing required fields" });
         return;
     }
 
     try {
-        const serviceResult = await transferService.proceedTransfer(userId, sourcePlatform, destinationPlatform, mappings, playlistTitle);
+        const serviceResult = await transferService.proceedTransfer(userId, sourcePlatform, destinationPlatform, mappings, playlistTitle, isPublic);
+        res.status(201).json({ playlistId: serviceResult });
     } catch (error) {
         console.error("Error finishing transfer:", error);
         res.status(500).json({ message: "Error finishing transfer" });

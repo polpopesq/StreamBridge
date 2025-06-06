@@ -6,7 +6,7 @@ import { youtubeToTrackUI, spotifyToTrackUI } from "../../../../shared/typeConve
 import * as spotifyService from "../spotifyService";
 import * as youtubeService from "../youtubeService";
 
-import { pool } from "config/db";
+import { pool } from "../../config/db";
 
 type TransferHandler = (userId: number, playlistId: string) => Promise<any>;
 
@@ -61,15 +61,29 @@ export const transferPlaylist = async (userId: number, source: PlatformKey, targ
     }
 };
 
-export const proceedTransfer = async (userId: number, source: PlatformKey, destination: PlatformKey, mappings: Mapping[], playlistTitle: string): Promise<void> => {
+export const proceedTransfer = async (userId: number, source: PlatformKey, destination: PlatformKey, mappings: Mapping[], playlistTitle: string, isPublic: boolean): Promise<string> => {
+    const matchedIds = mappings.reduce<string[]>((accumulator, mapping) => {
+        const id = mapping.destinationTrack?.id;
+        if (id) accumulator.push(id);
+        return accumulator;
+    }, []);
+    if (matchedIds.length === 0) {
+        throw new Error("Trying to create empty playlist.");
+    }
+
     await insertMappings(mappings, source, destination);
-    const matched = mappings.filter(m => m.destinationTrack !== null);
+
+    let createdPlaylistId = "";
 
     switch (destination) {
         case "spotify":
-            const createdPlaylist = await spotifyService.
-                case "youtube":
+            createdPlaylistId = await spotifyService.postPlaylistWithTracks(userId, playlistTitle, matchedIds, isPublic);
+            break;
+        case "youtube":
+            createdPlaylistId = await youtubeService.postPlaylistWithTracks(userId, playlistTitle, matchedIds, isPublic);
     }
+
+    return createdPlaylistId;
 }
 
 const insertMappings = async (mappings: Mapping[], source: PlatformKey, destination: PlatformKey): Promise<void> => {

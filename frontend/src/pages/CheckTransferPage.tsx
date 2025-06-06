@@ -1,9 +1,10 @@
-import { Container, Typography, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent, TextField } from '@mui/material';
+import { Container, Typography, Box, Button, Dialog, DialogTitle, DialogActions, DialogContent, TextField, FormControlLabel, Switch } from '@mui/material';
 import SongMappingList from '../components/SongMappingList';
 import { Mapping } from '@shared/types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { proceedTransfer } from '../services/transferService';
+import { SnackbarAlert } from '@components/SnackbarAlert';
 
 export default function CheckTransferPage() {
     const { sourcePlatform, destinationPlatform } = JSON.parse(localStorage.getItem("transferData") || "")
@@ -15,6 +16,8 @@ export default function CheckTransferPage() {
     const [mappings, setMappings] = useState<Mapping[] | undefined>(initialMappings);
     const [title, setTitle] = useState("");
     const [openDialog, setOpenDialog] = useState(false);
+    const [activeSnackbar, setActiveSnackbar] = useState(false);
+    const [isPublic, setIsPublic] = useState(false);
 
     const updateMapping = (updatedMapping: Mapping) => {
         setMappings(prev =>
@@ -38,7 +41,17 @@ export default function CheckTransferPage() {
     };
 
     const handleProceed = async () => {
-        if (mappings) await proceedTransfer(sourcePlatform, destinationPlatform, mappings, title);
+        if (mappings) {
+            const link = await proceedTransfer(sourcePlatform, destinationPlatform, mappings, title, isPublic);
+            if (link !== "") {
+                const newWindow = window.open(link, '_blank', 'noopener,noreferrer');
+                if (newWindow) newWindow.opener = null;
+                navigate("/success");
+            } else {
+                setOpenDialog(false);
+
+            }
+        }
     }
 
     if (!mappings) {
@@ -79,7 +92,17 @@ export default function CheckTransferPage() {
                         fullWidth
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
-                        sx={{ width: '70%' }}
+                        sx={{ width: '70%', mb: 2 }}
+                    />
+                    <FormControlLabel
+                        control={
+                            <Switch
+                                checked={isPublic}
+                                onChange={(e) => setIsPublic(e.target.checked)}
+                                color="primary"
+                            />
+                        }
+                        label={isPublic ? "Public" : "Private"}
                     />
                 </DialogContent>
                 <DialogActions>
@@ -93,6 +116,7 @@ export default function CheckTransferPage() {
                     </Button>
                 </DialogActions>
             </Dialog>
+            <SnackbarAlert message='No playlist returned' activeSnackbar={activeSnackbar} setActiveSnackbar={setActiveSnackbar} />
         </>
     );
 }

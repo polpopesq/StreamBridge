@@ -24,14 +24,15 @@ export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationP
     return transferJson;
 }
 
-export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[], playlistTitle: string): Promise<void> => {
+export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[], playlistTitle: string, isPublic: boolean): Promise<string> => {
     const response = await fetch(`${BACKEND_URL}/transfer/proceed`, {
         method: "POST",
         body: JSON.stringify({
             sourcePlatform,
             destinationPlatform,
             mappings,
-            playlistTitle
+            playlistTitle,
+            isPublic
         }),
         headers: {
             "Content-Type": "application/json",
@@ -39,5 +40,18 @@ export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPl
         credentials: "include"
     });
 
-    const confirmation = await response.json();
+    const data = await response.json();
+    const newPlaylistId = data.playlistId as string;
+
+    if (!newPlaylistId) {
+        console.error("Error: no playlist returned from /transfer/proceed!");
+        return "";
+    } else {
+        const baseUrls: Record<PlatformKey, string> = {
+            "spotify": 'https://open.spotify.com/playlist/',
+            "youtube": 'https://www.youtube.com/playlist?list=',
+            "txt": ""
+        };
+        return baseUrls[destinationPlatform] + newPlaylistId;
+    }
 }

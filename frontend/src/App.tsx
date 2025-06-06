@@ -15,6 +15,7 @@ import { useAuth } from "./services/AuthContext";
 import { ProtectedRoute } from "./services/ProtectedRoute";
 import LoadingScreen from "./pages/LoadingScreen";
 import CheckTransferPage from "./pages/CheckTransferPage";
+import SuccessScreen from "./pages/SuccessScreen";
 
 function App() {
   const { loggedIn, setLoggedIn } = useAuth();
@@ -59,6 +60,10 @@ function App() {
           <Route path="/checkout" element=
             {<ProtectedRoute isAuthenticated={loggedIn}>
               <CheckTransferPage />
+            </ProtectedRoute>} />
+          <Route path="/success" element=
+            {<ProtectedRoute isAuthenticated={loggedIn}>
+              <SuccessScreen />
             </ProtectedRoute>} />
         </Routes>
       </BrowserRouter>

@@ -32,5 +32,5 @@ CREATE TABLE IF NOT EXISTS non_matched_songs (
     id SERIAL PRIMARY KEY,
     source_platform VARCHAR(50) NOT NULL,
     destination_platform VARCHAR(50) NOT NULL,
-    source_id VARCHAR(200)UNIQUE NOT NULL,
+    source_id VARCHAR(200)UNIQUE NOT NULL
 );

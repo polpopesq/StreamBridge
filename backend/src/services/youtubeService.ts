@@ -9,7 +9,10 @@ const tokenCache = new Map<number, { accessToken: string, expiresAt: number }>()
 
 const scopes = [
     "https://www.googleapis.com/auth/youtube.readonly",
-];
+    "https://www.googleapis.com/auth/youtube",
+    "https://www.googleapis.com/auth/youtube.force-ssl"
+]
+
 
 export class YouTubeAuthRequiredError extends Error {
     constructor() {
@@ -323,3 +326,67 @@ export const searchTracks = async (query: string, accessToken: string, limit: nu
 
     return items.map((item: any) => simplifyTrack(item));
 }
+
+const addTrackToPlaylist = async (accessToken: string, playlistId: string, trackId: string): Promise<void> => {
+    const res = await fetch('https://www.googleapis.com/youtube/v3/playlistItems?part=snippet', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            snippet: {
+                playlistId,
+                resourceId: {
+                    kind: 'youtube#video',
+                    videoId: trackId,
+                },
+            },
+        }),
+    });
+
+    if (!res.ok) {
+        const error = await res.text();
+        console.error(`Failed to add track ${trackId}: `, error);
+    }
+}
+
+const createPlaylist = async (accessToken: string, playlistName: string, isPublic: boolean): Promise<string> => {
+    const res = await fetch('https://www.googleapis.com/youtube/v3/playlists?part=snippet,status', {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            snippet: { title: playlistName },
+            status: { privacyStatus: isPublic ? 'public' : 'private' },
+        }),
+    });
+
+    if (!res.ok) {
+        const error = await res.text();
+        throw new Error(`Error creating playlist: ${error}`);
+    }
+
+    const data = await res.json();
+    return data.id;
+}
+
+export const postPlaylistWithTracks = async (userId: number, playlistName: string, trackIds: string[], isPublic: boolean): Promise<string> => {
+    const accessToken = await getAccessToken(userId);
+    const playlistId = await createPlaylist(accessToken, playlistName, isPublic);
+
+    const results = await Promise.allSettled(
+        trackIds.map(trackId => addTrackToPlaylist(accessToken, playlistId, trackId))
+    );
+
+    const failed = results.filter(r => r.status === "rejected");
+    if (failed.length > 0) {
+        console.warn(`${failed.length} tracks failed to be added to the playlist.`);
+    } else {
+        console.log(`All ${trackIds.length} tracks added successfully to playlist ${playlistId}.`);
+    }
+
+    return playlistId;
+} 
