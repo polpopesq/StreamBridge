@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import * as spotifyService from "../services/spotifyService";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
 import dotenv from "dotenv";
-import { SpotifyPlaylist } from "@shared/types";
 
 dotenv.config();
 
@@ -92,7 +91,3 @@ export const search = async (req: AuthenticatedRequest, res: Response) => {
 
   res.status(200).json(spotifyTracks);
 };
-
-export const createPlaylist = (req: Request, res: Response) => { };
-
-export const addTracks = (req: Request, res: Response) => { };

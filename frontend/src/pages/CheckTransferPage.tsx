@@ -4,10 +4,10 @@ import { Mapping } from '@shared/types';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
 import { proceedTransfer } from '../services/transferService';
-import { SnackbarAlert } from '@components/SnackbarAlert';
+import { SnackbarAlert } from '../components/SnackbarAlert';
 
 export default function CheckTransferPage() {
-    const { sourcePlatform, destinationPlatform } = JSON.parse(localStorage.getItem("transferData") || "")
+    const { sourcePlatform, destinationPlatform, selectedPlaylist } = JSON.parse(localStorage.getItem("transferData") || "")
     const location = useLocation();
     const initialMappings = location.state?.mappings as Mapping[] | undefined;
 
@@ -41,18 +41,25 @@ export default function CheckTransferPage() {
     };
 
     const handleProceed = async () => {
-        if (mappings) {
-            const link = await proceedTransfer(sourcePlatform, destinationPlatform, mappings, title, isPublic);
+        if (!mappings) return;
+
+        navigate("/loading");
+
+        try {
+            const link = await proceedTransfer(sourcePlatform, destinationPlatform, mappings, title, isPublic, selectedPlaylist.id);
+
             if (link !== "") {
                 const newWindow = window.open(link, '_blank', 'noopener,noreferrer');
                 if (newWindow) newWindow.opener = null;
-                navigate("/success");
-            } else {
-                setOpenDialog(false);
-
             }
+
+            navigate("/success");
+        } catch (error) {
+            console.error("Transfer failed:", error);
+            setOpenDialog(false);
         }
-    }
+    };
+
 
     if (!mappings) {
         navigate("/transfer");

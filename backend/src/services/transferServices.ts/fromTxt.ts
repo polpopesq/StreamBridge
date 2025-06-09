@@ -1,32 +1,33 @@
 import * as youtubeService from "../youtubeService";
 import * as spotifyService from "../spotifyService";
-import { Mapping } from "@shared/types";
-import { spotifyToTrackUI, txtToTrack, youtubeToTrackUI } from "../../../../shared/typeConverters";
+import { Mapping, TrackUI } from "@shared/types";
+import { spotifyToTrackUI, youtubeToTrackUI } from "../../../../shared/typeConverters";
 import { getSpotifyTrackFromAI, getYoutubeTrackFromAI } from "./aiQuery";
 
-export const txtToSpotifyTransfer = async (userId: number, txtContent: string): Promise<Mapping[]> => {
-    const lines = txtContent.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+export const txtToSpotifyTransfer = async (userId: number, tracks: TrackUI[]): Promise<Mapping[]> => {
     const spotifyAccessToken = await spotifyService.getAccessToken(userId);
 
-    const trackPromises = lines.map(async line => {
-        const queryResult = await spotifyService.searchTracks(line, spotifyAccessToken, 1);
-        if (queryResult) return { sourceTrack: txtToTrack(line), destinationTrack: spotifyToTrackUI(queryResult[0]) };
-        const aiResult = await getSpotifyTrackFromAI(line, spotifyAccessToken);
-        return { sourceTrack: txtToTrack(line), destinationTrack: aiResult ? spotifyToTrackUI(aiResult) : null };
+    const trackPromises = tracks.map(async track => {
+        const trackArtists = track.artists.length === 0 ? "" : track.artists.join(", ");
+        const queryString = track.name + trackArtists === "" ? "" : ` - ${trackArtists}`;
+        const queryResult = await spotifyService.searchTracks(queryString, spotifyAccessToken, 1);
+        if (queryResult) return { sourceTrack: track, destinationTrack: spotifyToTrackUI(queryResult[0]) };
+        const aiResult = await getSpotifyTrackFromAI(queryString, spotifyAccessToken);
+        return { sourceTrack: track, destinationTrack: aiResult ? spotifyToTrackUI(aiResult) : null };
     })
 
     return await Promise.all(trackPromises);
 }
 
-
-export const txtToYoutubeTransfer = async (userId: number, txtContent: string): Promise<Mapping[]> => {
-    const lines = txtContent.split(/\r?\n/).map(line => line.trim()).filter(line => line.length > 0);
+export const txtToYoutubeTransfer = async (userId: number, tracks: TrackUI[]): Promise<Mapping[]> => {
     const youtubeAccessToken = await youtubeService.getAccessToken(userId);
-    const trackPromises = lines.map(async line => {
-        const queryResult = await youtubeService.searchTracks(line, youtubeAccessToken, 1);
-        if (queryResult) return { sourceTrack: txtToTrack(line), destinationTrack: youtubeToTrackUI(queryResult[0]) };
-        const aiResult = await getYoutubeTrackFromAI(line, youtubeAccessToken);
-        return { sourceTrack: txtToTrack(line), destinationTrack: aiResult ? youtubeToTrackUI(aiResult) : null };
+    const trackPromises = tracks.map(async track => {
+        const trackArtists = track.artists.length === 0 ? "" : track.artists.join(", ");
+        const queryString = track.name + trackArtists === "" ? "" : ` - ${trackArtists}`;
+        const queryResult = await youtubeService.searchTracks(queryString, youtubeAccessToken, 1);
+        if (queryResult) return { sourceTrack: track, destinationTrack: youtubeToTrackUI(queryResult[0]) };
+        const aiResult = await getYoutubeTrackFromAI(queryString, youtubeAccessToken);
+        return { sourceTrack: track, destinationTrack: aiResult ? youtubeToTrackUI(aiResult) : null };
     })
 
     return await Promise.all(trackPromises);

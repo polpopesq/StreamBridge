@@ -1,13 +1,13 @@
 import { BACKEND_URL } from "../constants";
-import { Mapping, PlatformKey } from "@shared/types";
+import { Mapping, PlatformKey, Playlist } from "@shared/types";
 
-export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, playlistId: string): Promise<Mapping[]> => {
+export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, selectedPlaylist: Playlist): Promise<Mapping[]> => {
     const response = await fetch(`${BACKEND_URL}/transfer`, {
         method: "POST",
         body: JSON.stringify({
             sourcePlatform,
             destinationPlatform,
-            playlistId,
+            selectedPlaylist,
         }),
         headers: {
             "Content-Type": "application/json",
@@ -24,7 +24,7 @@ export const transferPlaylist = async (sourcePlatform: PlatformKey, destinationP
     return transferJson;
 }
 
-export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[], playlistTitle: string, isPublic: boolean): Promise<string> => {
+export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPlatform: PlatformKey, mappings: Mapping[], playlistTitle: string, isPublic: boolean, ogPlaylistId: string): Promise<string> => {
     const response = await fetch(`${BACKEND_URL}/transfer/proceed`, {
         method: "POST",
         body: JSON.stringify({
@@ -32,7 +32,8 @@ export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPl
             destinationPlatform,
             mappings,
             playlistTitle,
-            isPublic
+            isPublic,
+            ogPlaylistId
         }),
         headers: {
             "Content-Type": "application/json",

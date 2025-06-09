@@ -3,6 +3,8 @@ import * as spotifyService from "../spotifyService";
 import { SpotifyTrack, YoutubeTrack, YoutubePlaylist } from "@shared/types";
 import dotenv from "dotenv";
 import { getSpotifyTrackFromAI } from "./aiQuery";
+import { checkDbMapping } from "./index";
+
 
 dotenv.config();
 
@@ -58,8 +60,13 @@ const normalizeTracks = (tracks: YoutubeTrack[]): YoutubeTrack[] => {
         };
     })
 }
-
+//TODO: some optimization to query youtube less, after sesi
 const mapYoutubeTrackToSpotifyTrack = async (track: YoutubeTrack, spotifyAccessToken: string): Promise<YoutubeSpotifyMap> => {
+    const destinationId = await checkDbMapping("youtube", "spotify", track.youtubeId);
+    if (destinationId) {
+        const result = await spotifyService.getTrackDetails(destinationId, spotifyAccessToken);
+        return { track, result };
+    }
     const getFirstWords = (text: string, count: number): string => {
         return text?.split(/\s+/).slice(0, count).join(" ") || "";
     };

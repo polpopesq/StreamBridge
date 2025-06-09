@@ -129,7 +129,6 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
 
 export const getYoutubeUser = async (userId: number): Promise<{ display_name: string, id: string }> => {
     const accessToken = await getAccessToken(userId);
-    console.log("Access token: ", accessToken);
     const response = await fetch("https://www.googleapis.com/youtube/v3/channels?part=snippet&mine=true", {
         headers: {
             "Authorization": `Bearer ${accessToken}`,
@@ -373,20 +372,29 @@ const createPlaylist = async (accessToken: string, playlistName: string, isPubli
     return data.id;
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 export const postPlaylistWithTracks = async (userId: number, playlistName: string, trackIds: string[], isPublic: boolean): Promise<string> => {
     const accessToken = await getAccessToken(userId);
     const playlistId = await createPlaylist(accessToken, playlistName, isPublic);
 
-    const results = await Promise.allSettled(
-        trackIds.map(trackId => addTrackToPlaylist(accessToken, playlistId, trackId))
-    );
+    const failedTracks: string[] = [];
 
-    const failed = results.filter(r => r.status === "rejected");
-    if (failed.length > 0) {
-        console.warn(`${failed.length} tracks failed to be added to the playlist.`);
+    for (const trackId of trackIds) {
+        try {
+            await addTrackToPlaylist(accessToken, playlistId, trackId);
+            await sleep(500);
+        } catch (err) {
+            console.warn(`Failed to add track ${trackId}`, err);
+            failedTracks.push(trackId);
+        }
+    }
+
+    if (failedTracks.length > 0) {
+        console.warn(`${failedTracks.length} tracks failed to be added to the playlist.`);
     } else {
         console.log(`All ${trackIds.length} tracks added successfully to playlist ${playlistId}.`);
     }
 
     return playlistId;
-} 
+};

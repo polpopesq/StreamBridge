@@ -39,11 +39,3 @@ export const youtubeToPlaylist = (youtubePlaylist: YoutubePlaylist): Playlist =>
         public: youtubePlaylist.public
     }
 }
-
-export const txtToTrack = (txt: string): TrackUI => {
-    return {
-        id: crypto.randomUUID(),
-        name: txt.trim(),
-        artists: [""]
-    }
-}

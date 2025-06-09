@@ -1,8 +1,10 @@
 import * as spotifyService from "../spotifyService";
 import * as youtubeService from "../youtubeService";
-import { SpotifyTrack, YoutubeTrack, SpotifyPlaylist } from "@shared/types";
+import { SpotifyTrack, YoutubeTrack } from "@shared/types";
 import dotenv from "dotenv";
 import { getYoutubeTrackFromAI } from "./aiQuery";
+import { checkDbMapping } from "./index";
+
 
 dotenv.config();
 
@@ -16,7 +18,7 @@ export const spotifyToYoutubeTransfer = async (userId: number, playlistId: strin
     const spotifyPlaylist = await spotifyService.getPlaylistById(userId, playlistId);
     const youtubeAccessToken = await youtubeService.getAccessToken(userId);
 
-    return await spotifyToYoutubeMapper(spotifyPlaylist, youtubeAccessToken);
+    return await spotifyToYoutubeMapper(spotifyPlaylist.tracks, youtubeAccessToken);
 }
 
 export const spotifyToTxtTransfer = async (userId: number, playlistId: string): Promise<string> => {
@@ -31,6 +33,11 @@ export const spotifyToTxtTransfer = async (userId: number, playlistId: string): 
 };
 
 const mapSpotifyTrackToYoutubeTrack = async (track: SpotifyTrack, youtubeAccessToken: string): Promise<SpotifyYoutubeMap> => {
+    const destinationId = await checkDbMapping("spotify", "youtube", track.spotifyId);
+    if (destinationId) {
+        const result = await youtubeService.getYoutubeVideoDetails(destinationId, youtubeAccessToken);
+        return { track, result };
+    }
     const query = `${track.name} ${track.artists.join(" ")}`;
     const youtubeQuery = await youtubeService.searchTracks(query, youtubeAccessToken, 1);
     let result = youtubeQuery ? youtubeQuery[0] : null;
@@ -49,8 +56,8 @@ const mapSpotifyTrackToYoutubeTrack = async (track: SpotifyTrack, youtubeAccessT
     return { track, result };
 };
 
-const spotifyToYoutubeMapper = async (ogPlaylist: SpotifyPlaylist, youtubeAccessToken: string): Promise<SpotifyYoutubeMap[]> => {
-    const mappingPromises = ogPlaylist.tracks.map(track => mapSpotifyTrackToYoutubeTrack(track, youtubeAccessToken));
+const spotifyToYoutubeMapper = async (ogTracks: SpotifyTrack[], youtubeAccessToken: string): Promise<SpotifyYoutubeMap[]> => {
+    const mappingPromises = ogTracks.map(track => mapSpotifyTrackToYoutubeTrack(track, youtubeAccessToken));
 
     return await Promise.all(mappingPromises);
 };
