@@ -43,3 +43,9 @@ export interface TransferData {
     selectedPlaylist: Playlist | null;
     destinationPlatform: PlatformKey | null;
 }
+
+export interface FrontendUser {
+    id: number,
+    email: string,
+    isAdmin: boolean
+}

@@ -1,3 +1,4 @@
+import { FrontendUser } from "@shared/types";
 import { BACKEND_URL } from "../constants";
 
 export const register = async (email: string, password: string): Promise<void> => {
@@ -37,14 +38,20 @@ export const login = async (email: string, password: string): Promise<void> => {
     console.log('Login successful:', data);
 };
 
-export const isLoggedIn = async (): Promise<boolean> => {
+export const getUser = async (): Promise<FrontendUser> => {
     try {
         const res = await fetch(`${BACKEND_URL}/auth/me`, {
             credentials: "include",
         });
 
-        return res.ok;
-    } catch {
-        return false;
+        if (!res.ok) {
+            throw new Error('Failed to fetch user data');
+        }
+        const json = await res.json();
+        console.log(json);
+        return json;
+    } catch (error) {
+        console.error('Error fetching user data:', error);
+        throw error;
     }
-};
+} 

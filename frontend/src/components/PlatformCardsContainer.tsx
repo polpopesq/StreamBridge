@@ -1,6 +1,7 @@
-import { platformData, PlatformKey } from "../constants";
+import { platformData } from "../constants";
 import { Box, Grid2 as Grid } from "@mui/material";
 import AboutPlatformCard from "./AboutPlatformCard";
+import { PlatformKey } from "@shared/types";
 
 interface PlatformCardsContainerProps {
     handleBoxClick: (platformKey: PlatformKey) => void;

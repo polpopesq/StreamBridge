@@ -10,12 +10,13 @@ import Navbar from "./components/Navbar";
 import PlatformsPage from "./pages/PlatformsPage";
 import TransferWizard from "./pages/TransferWizard";
 import AccountPage from "./pages/AccountPage";
-import { isLoggedIn } from "./services/authService";
+import { getUser } from "./services/authService";
 import { useAuth } from "./services/AuthContext";
 import { ProtectedRoute } from "./services/ProtectedRoute";
 import LoadingScreen from "./pages/LoadingScreen";
 import CheckTransferPage from "./pages/CheckTransferPage";
 import SuccessScreen from "./pages/SuccessScreen";
+import AdminPage from "./pages/AdminPage";
 
 function App() {
   const { loggedIn, setLoggedIn } = useAuth();
@@ -30,7 +31,12 @@ function App() {
 
   useEffect(() => {
     const checkLogin = async () => {
-      const logged = await isLoggedIn();
+      let logged = true;
+      try {
+        await getUser();
+      } catch (e) {
+        logged = false
+      }
       setLoggedIn(logged);
     };
     checkLogin();
@@ -65,6 +71,7 @@ function App() {
             {<ProtectedRoute isAuthenticated={loggedIn}>
               <SuccessScreen />
             </ProtectedRoute>} />
+          <Route path="admin dashboard" element={<AdminPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>

@@ -1,28 +1,37 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { AppBar, Toolbar, Typography, IconButton, Box, Container, Button } from "@mui/material";
 import ConfirmDialog from "./ConfirmDialog";
 import { useNavigate } from "react-router-dom";
 import MoonIcon from "../assets/icons/dark/MoonIcon.png";
 import DarkLogo from "../assets/icons/dark/DarkLogo.png";
-//import FullDarkLogo from "../assets/icons/dark/FullDarkLogo.png";
 import SunIcon from "../assets/icons/light/SunIcon.png";
 import LightLogo from "../assets/icons/light/LightLogo.png";
-//import FullLightLogo from "../assets/icons/light/FullLightLogo.png";
-import { navbarPages, loggedNavbarPages } from "../constants";
+import { navbarPages, loggedNavbarPages, adminNavbarPages } from "../constants";
 import { useAuth } from "../services/AuthContext";
 import { BACKEND_URL } from "../constants";
+import { getUser } from "../services/authService";
 
 interface NavbarProps {
   darkMode: boolean;
   setDarkMode: (mode: boolean) => void;
 }
 
-
-
 const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
   const { loggedIn, setLoggedIn } = useAuth();
   const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-  const pagesToDisplay = loggedIn ? loggedNavbarPages : navbarPages;
+  const [pagesToDisplay, setPagesToDisplay] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!loggedIn) {
+      setPagesToDisplay(navbarPages);
+      return;
+    }
+    const setAdminPages = async () => {
+      const user = await getUser();
+      setPagesToDisplay(user.isAdmin ? adminNavbarPages : loggedNavbarPages);
+    }
+    setAdminPages()
+  }, [loggedIn])
 
   const navigate = useNavigate();
 
@@ -30,7 +39,6 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
     setLoggedIn(false);
     localStorage.removeItem("loggedIn");
 
-    //pt stergere cookie
     await fetch(`${BACKEND_URL}/auth/logout`, {
       credentials: "include",
     });
@@ -50,6 +58,7 @@ const Navbar: React.FC<NavbarProps> = ({ darkMode, setDarkMode }) => {
   }
 
   return (
+    pagesToDisplay &&
     <>
       <AppBar position="fixed">
         <Container maxWidth="xl">

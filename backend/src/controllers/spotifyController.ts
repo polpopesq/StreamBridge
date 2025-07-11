@@ -13,10 +13,7 @@ export const login = (req: Request, res: Response): void => {
   res.redirect(url);
 };
 
-export const callback = async (
-  req: AuthenticatedRequest,
-  res: Response
-): Promise<void> => {
+export const callback = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
   const code = req.query.code as string;
   const returnedState = req.query.state;
   const originalState = req.cookies?.oauth_state;

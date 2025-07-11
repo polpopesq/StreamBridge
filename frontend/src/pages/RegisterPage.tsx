@@ -3,6 +3,10 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import * as authService from "../services/authService";
 
+//TODO: schimba inapoi la 6 cand termini testele
+const isValidEmail = (email: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+const isValidPassword = (password: string) => password.length >= 4;
+
 const RegisterPage = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
@@ -13,11 +17,10 @@ const RegisterPage = () => {
     try {
       await authService.register(email, password);
       navigate("/login");
-    }
-    catch (err) {
+    } catch (err) {
       console.error("Registration failed", err);
     }
-  }
+  };
 
   return (
     <Container maxWidth="sm">
@@ -32,6 +35,8 @@ const RegisterPage = () => {
           variant="outlined"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          error={email !== "" && !isValidEmail(email)}
+          helperText={email !== "" && !isValidEmail(email) ? "Email invalid" : ""}
         />
 
         <TextField
@@ -42,16 +47,22 @@ const RegisterPage = () => {
           variant="outlined"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          error={password !== "" && !isValidPassword(password)}
+          helperText={password !== "" && !isValidPassword(password) ? "Parola trebuie să aibă cel puțin 6 caractere" : ""}
         />
+
         <Button
           variant="contained"
           color="primary"
           fullWidth
           size="large"
           sx={{ mt: 2 }}
-          onClick={handleSubmit}>
+          onClick={handleSubmit}
+          disabled={!isValidEmail(email) || !isValidPassword(password)}
+        >
           Înregistrează-te
         </Button>
+
         <Typography variant="body2" mt={2}>
           Ai deja un cont?{" "}
           <Button color="secondary" onClick={() => navigate("/login")}>

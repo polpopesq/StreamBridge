@@ -5,6 +5,7 @@ import {
   tokenMiddleware,
 } from "../middlewares/tokenMiddleware";
 import { AUTH_COOKIE } from "../middlewares/tokenMiddleware";
+import { FrontendUser } from "@shared/types";
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
@@ -52,15 +53,6 @@ export const register = async (req: Request, res: Response): Promise<void> => {
     return;
   }
 
-  const token = tokenMiddleware.signJWT({ user_id: newUser.id });
-
-  res.cookie("auth_token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 3600000,
-  });
-
   res.status(201).json({ message: "User created" });
 };
 
@@ -72,6 +64,9 @@ export const logout = async (req: Request, res: Response): Promise<void> => {
 export const getActiveUser = async (
   req: AuthenticatedRequest,
   res: Response
-): Promise<any> => {
-  return res.json({ user: req.user });
+): Promise<void> => {
+  if (req.user) {
+    const user = await UserService.getUser(req.user.user_id);
+    res.status(200).json(user)
+  } else res.status(404).send({ message: "User not found." })
 };

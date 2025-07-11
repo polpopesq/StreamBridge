@@ -3,8 +3,6 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
 import { SpotifyPlaylist, SpotifyTrack } from "@shared/types";
-import { isNullOrUndefined } from "util";
-import { access } from "fs";
 
 dotenv.config();
 

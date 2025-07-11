@@ -25,3 +25,4 @@ export const platformData: Record<PlatformKey, { name: string, description: stri
 
 export const navbarPages = ['acasa', 'platforme', 'login'];
 export const loggedNavbarPages = ['acasa', 'platforme', 'transfera', 'contul meu', 'logout'];
+export const adminNavbarPages = ['acasa', 'platforme', 'transfera', 'contul meu', 'logout', 'admin dashboard'];

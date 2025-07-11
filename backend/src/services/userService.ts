@@ -1,3 +1,4 @@
+import { FrontendUser } from "@shared/types";
 import { pool } from "../config/db";
 import bcrypt from "bcrypt";
 
@@ -6,7 +7,7 @@ const saltRounds = 10;
 export interface User {
   id: number;
   email: string;
-  password: string; // hashed password
+  password: string;
 }
 
 export const UserService = {
@@ -52,4 +53,19 @@ export const UserService = {
       return null;
     }
   },
+
+  getUser: async (id: number): Promise<FrontendUser> => {
+    const queryResult = await pool.query(
+      "SELECT id, email, isadmin FROM users WHERE id = $1",
+      [id]
+    );
+
+    const result = queryResult.rows[0];
+
+    return {
+      id: result.id,
+      email: result.email,
+      isAdmin: result.isadmin
+    };
+  }
 };
