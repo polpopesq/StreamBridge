@@ -1,4 +1,4 @@
-import { TrackUI, SpotifyTrack, YoutubeTrack, SpotifyPlaylist, YoutubePlaylist, Playlist } from "./types"
+import { TrackUI, SpotifyTrack, YoutubeTrack, SpotifyPlaylist, YoutubePlaylist, Playlist, MatchedSong, NonMatchedSong } from "./types"
 
 export const youtubeToTrackUI = (youtubeTrack: YoutubeTrack): TrackUI => {
     return {
@@ -39,3 +39,33 @@ export const youtubeToPlaylist = (youtubePlaylist: YoutubePlaylist): Playlist =>
         public: youtubePlaylist.public
     }
 }
+
+export const mapRowToMatchedSong = (row: any): MatchedSong => {
+    return {
+        id: row.id,
+        source_platform: row.source_platform,
+        destination_platform: row.destination_platform,
+        source_id: row.source_id,
+        destination_id: row.destination_id,
+        source_name: row.source_name,
+        destination_name: row.destination_name
+    };
+};
+
+export const mapRowToNonMatchedSong = (row: any): NonMatchedSong => {
+    return {
+        id: row.id,
+        source_platform: row.source_platform,
+        destination_platform: row.destination_platform,
+        source_id: row.source_id,
+        source_name: row.source_name
+    };
+};
+
+export const mapRowsToMatchedSongs = (rows: any[]): MatchedSong[] => {
+    return rows.map(mapRowToMatchedSong);
+};
+
+export const mapRowsToNonMatchedSongs = (rows: any[]): NonMatchedSong[] => {
+    return rows.map(mapRowToNonMatchedSong);
+};

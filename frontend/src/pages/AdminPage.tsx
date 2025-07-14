@@ -8,30 +8,30 @@ import {
     DialogActions,
     DialogContent,
     DialogTitle,
-    Grid2,
     TextField,
     Typography,
-    Paper
+    Paper,
+    Grid2,
+    FormControl,
+    FormControlLabel,
+    RadioGroup,
+    Radio
 } from "@mui/material";
 import { getUser } from "../services/authService";
-import { BACKEND_URL } from "../constants";
+import {
+    fetchMatchedSongs,
+    fetchNonMatchedSongs,
+    addMatchedSong,
+    addNonMatchedSong,
+    updateMatchedSong,
+    updateNonMatchedSong,
+    deleteMatchedSong,
+    deleteNonMatchedSong,
+} from "../services/adminService";
+import { useTheme } from "@mui/material/styles";
+import { MatchedSong, NonMatchedSong } from "@shared/types";
 
-interface MatchedSong {
-    id: number;
-    source_platform: string;
-    destination_platform: string;
-    source_id: string;
-    destination_id: string;
-}
-
-interface NonMatchedSong {
-    id: number;
-    source_platform: string;
-    destination_platform: string;
-    source_id: string;
-}
-
-export default function AdminSongManagerPage() {
+const AdminPage = () => {
     const navigate = useNavigate();
     const [matchedSongs, setMatchedSongs] = useState<MatchedSong[]>([]);
     const [nonMatchedSongs, setNonMatchedSongs] = useState<NonMatchedSong[]>([]);
@@ -39,20 +39,26 @@ export default function AdminSongManagerPage() {
     const [formData, setFormData] = useState<Partial<MatchedSong & NonMatchedSong>>({});
     const [editingType, setEditingType] = useState<'matched' | 'nonmatched'>('matched');
     const [isEdit, setIsEdit] = useState(false);
+    const [viewType, setViewType] = useState<'matched' | 'nonmatched'>('nonmatched');
+    const theme = useTheme();
+
 
     useEffect(() => {
         const checkAdminAndLoadData = async () => {
             const user = await getUser();
-            if (!user?.isAdmin) navigate("/");
+            if (!user?.isAdmin) return navigate("/");
 
-            const [matchedRes, nonMatchedRes] = await Promise.all([
-                fetch(`${BACKEND_URL}/admin/matched-songs`).then(r => r.json()),
-                fetch(`${BACKEND_URL}/admin/non-matched-songs`).then(r => r.json())
+            const [matched, nonMatched] = await Promise.all([
+                fetchMatchedSongs(),
+                fetchNonMatchedSongs()
             ]);
 
-            setMatchedSongs(matchedRes);
-            setNonMatchedSongs(nonMatchedRes);
+            setMatchedSongs(matched);
+            setNonMatchedSongs(nonMatched);
+            console.log(matched, nonMatched)
         };
+
+
         checkAdminAndLoadData();
     }, [navigate]);
 
@@ -64,22 +70,39 @@ export default function AdminSongManagerPage() {
     };
 
     const handleSubmit = async () => {
-        const url = `${BACKEND_URL}/admin/${editingType === 'matched' ? 'matched-songs' : 'non-matched-songs'}`;
-        const method = isEdit ? 'PUT' : 'POST';
+        const isMatched = editingType === 'matched';
 
-        await fetch(url, {
-            method,
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(formData)
-        });
+        const updatedSong = isMatched
+            ? (isEdit ? await updateMatchedSong(formData) : await addMatchedSong(formData))
+            : (isEdit ? await updateNonMatchedSong(formData) : await addNonMatchedSong(formData));
 
-        window.location.reload();
+        if (isMatched) {
+            setMatchedSongs(prev =>
+                isEdit
+                    ? prev.map(song => song.id === updatedSong.id ? updatedSong : song)
+                    : [...prev, updatedSong]
+            );
+        } else {
+            setNonMatchedSongs(prev =>
+                isEdit
+                    ? prev.map(song => song.id === updatedSong.id ? updatedSong : song)
+                    : [...prev, updatedSong]
+            );
+        }
+
+        setOpenDialog(false);
+        setFormData({});
+        setIsEdit(false);
     };
 
     const handleDelete = async (type: 'matched' | 'nonmatched', id: number) => {
-        const url = `${BACKEND_URL}/admin/${type === 'matched' ? 'matched-songs' : 'non-matched-songs'}/${id}`;
-        await fetch(url, { method: 'DELETE' });
-        window.location.reload();
+        if (type === 'matched') {
+            await deleteMatchedSong(id);
+            setMatchedSongs(prev => prev.filter(song => song.id !== id));
+        } else {
+            await deleteNonMatchedSong(id);
+            setNonMatchedSongs(prev => prev.filter(song => song.id !== id));
+        }
     };
 
     return (
@@ -89,48 +112,101 @@ export default function AdminSongManagerPage() {
                 Admin Song Manager
             </Typography>
 
-            <Grid2 container spacing={4}>
-                <Grid2 size={{ xs: 12, md: 6 }}>
-                    <Typography variant="h6">Matched Songs</Typography>
-                    <Button variant="contained" onClick={() => handleOpenDialog('matched')} sx={{ mb: 2 }}>
-                        Add Matched Song
-                    </Button>
-                    {matchedSongs.map(song => (
-                        <Paper key={song.id} sx={{ p: 2, mb: 1 }}>
-                            <Typography variant="body2">
-                                {song.source_platform} → {song.destination_platform}
-                            </Typography>
-                            <Typography variant="caption">
-                                {song.source_id} → {song.destination_id}
-                            </Typography>
-                            <br />
-                            <Button size="small" onClick={() => handleOpenDialog('matched', song)}>Edit</Button>
-                            <Button size="small" color="error" onClick={() => handleDelete('matched', song.id)}>Delete</Button>
-                        </Paper>
-                    ))}
-                </Grid2>
+            <FormControl component="fieldset" sx={{ mb: 3 }}>
+                <RadioGroup
+                    row
+                    value={viewType}
+                    onChange={(e) => setViewType(e.target.value as 'matched' | 'nonmatched')}
+                >
+                    <FormControlLabel value="matched" control={<Radio />} label="Matched Songs" />
+                    <FormControlLabel value="nonmatched" control={<Radio />} label="Non-Matched Songs" />
+                </RadioGroup>
+            </FormControl>
 
-                <Grid2 size={{ xs: 12, md: 6 }}>
-                    <Typography variant="h6">Non-Matched Songs</Typography>
-                    <Button variant="contained" onClick={() => handleOpenDialog('nonmatched')} sx={{ mb: 2 }}>
-                        Add Non-Matched Song
-                    </Button>
-                    {nonMatchedSongs.map(song => (
-                        <Paper key={song.id} sx={{ p: 2, mb: 1 }}>
-                            <Typography variant="body2">
-                                {song.source_platform} → {song.destination_platform}
-                            </Typography>
-                            <Typography variant="caption">{song.source_id}</Typography>
-                            <br />
-                            <Button size="small" onClick={() => handleOpenDialog('nonmatched', song)}>Edit</Button>
-                            <Button size="small" color="error" onClick={() => handleDelete('nonmatched', song.id)}>Delete</Button>
+
+            <Grid2 container spacing={4} justifyContent="center">
+                <Grid2 container direction="column" alignItems="center" size={12}>
+                    <Typography variant="h6" align="center">
+                        {viewType === 'matched' ? 'Matched Songs' : 'Non-Matched Songs'}
+                    </Typography>
+
+                    {viewType === "matched" && (
+                        <Box display="flex" justifyContent="center" mb={2}>
+                            <Button variant="contained" onClick={() => handleOpenDialog(viewType)}>
+                                Add Matched Song
+                            </Button>
+                        </Box>
+                    )}
+
+                    {(viewType === 'matched' ? matchedSongs : nonMatchedSongs).map((song) => (
+                        <Paper
+                            key={song.id}
+                            sx={{
+                                p: 2,
+                                mb: 2,
+                                width: '100%',
+                                backgroundColor: theme.palette.background.paper,
+                                color: theme.palette.text.primary,
+                            }}
+                        >
+                            <Box
+                                display="flex"
+                                flexDirection="row"
+                                justifyContent="space-between"
+                                alignItems="center"
+                                flexWrap="wrap"
+                                gap={2}
+                            >
+                                <Box flex={1}>
+                                    <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                        {song.source_platform}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        <strong>ID:</strong> {song.source_id}
+                                    </Typography>
+                                    <Typography variant="body2" color="text.secondary">
+                                        <strong>Title:</strong> {song.source_name || '—'}
+                                    </Typography>
+                                </Box>
+
+                                <Box flexShrink={0} sx={{ fontSize: 32, color: theme.palette.text.secondary }}>
+                                    ➜
+                                </Box>
+
+                                {(song as any).destination_id && (
+                                    <Box flex={1}>
+                                        <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
+                                            {(song as any).destination_platform}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            <strong>ID:</strong> {(song as any).destination_id || '—'}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            <strong>Title:</strong> {(song as any).destination_name || '—'}
+                                        </Typography>
+                                    </Box>
+                                )}
+
+                            </Box>
+
+                            <Box display="flex" justifyContent="space-between" mt={2}>
+                                <Button size="small" onClick={() => handleOpenDialog(viewType, song)}>
+                                    Edit
+                                </Button>
+                                <Button size="small" color="error" onClick={() => handleDelete(viewType, song.id)}>
+                                    Delete
+                                </Button>
+                            </Box>
                         </Paper>
                     ))}
+
                 </Grid2>
             </Grid2>
 
             <Dialog open={openDialog} onClose={() => setOpenDialog(false)}>
-                <DialogTitle>{isEdit ? 'Edit' : 'Add'} {editingType === 'matched' ? 'Matched' : 'Non-Matched'} Song</DialogTitle>
+                <DialogTitle>
+                    {isEdit ? 'Edit' : 'Add'} {editingType === 'matched' ? 'Matched' : 'Non-Matched'} Song
+                </DialogTitle>
                 <DialogContent>
                     <TextField
                         label="Source Platform"
@@ -140,11 +216,11 @@ export default function AdminSongManagerPage() {
                         onChange={(e) => setFormData({ ...formData, source_platform: e.target.value })}
                     />
                     <TextField
-                        label="Destination Platform"
+                        label="Source Name"
                         fullWidth
                         sx={{ mt: 1 }}
-                        value={formData.destination_platform || ''}
-                        onChange={(e) => setFormData({ ...formData, destination_platform: e.target.value })}
+                        value={formData.source_name || ''}
+                        onChange={(e) => setFormData({ ...formData, source_name: e.target.value })}
                     />
                     <TextField
                         label="Source ID"
@@ -152,6 +228,21 @@ export default function AdminSongManagerPage() {
                         sx={{ mt: 1 }}
                         value={formData.source_id || ''}
                         onChange={(e) => setFormData({ ...formData, source_id: e.target.value })}
+                    />
+
+                    <TextField
+                        label="Destination Platform"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        value={formData.destination_platform || ''}
+                        onChange={(e) => setFormData({ ...formData, destination_platform: e.target.value })}
+                    />
+                    <TextField
+                        label="Destination Name"
+                        fullWidth
+                        sx={{ mt: 1 }}
+                        value={formData.destination_name || ''}
+                        onChange={(e) => setFormData({ ...formData, destination_name: e.target.value })}
                     />
                     {editingType === 'matched' && (
                         <TextField
@@ -165,9 +256,13 @@ export default function AdminSongManagerPage() {
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenDialog(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSubmit}>{isEdit ? 'Save' : 'Add'}</Button>
+                    <Button variant="contained" onClick={handleSubmit}>
+                        {isEdit ? 'Save' : 'Add'}
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Container>
     );
-}
+};
+
+export default AdminPage;

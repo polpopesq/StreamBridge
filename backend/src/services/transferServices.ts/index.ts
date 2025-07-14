@@ -95,23 +95,26 @@ const insertMappings = async (mappings: Mapping[], source: PlatformKey, destinat
         for (const mapping of mappings) {
             if (mapping.destinationTrack) {
                 await client.query(
-                    `INSERT INTO matched_songs (source_platform, destination_platform, source_id, destination_id)
-                 VALUES ($1, $2, $3, $4)`,
+                    `INSERT INTO matched_songs (source_platform, destination_platform, source_id, destination_id, source_name, destination_name)
+                 VALUES ($1, $2, $3, $4, $5, $6)`,
                     [
                         source,
                         destination,
                         mapping.sourceTrack.id,
                         mapping.destinationTrack.id,
+                        mapping.sourceTrack.name,
+                        mapping.destinationTrack.name
                     ]
                 );
             } else {
                 await client.query(
-                    `INSERT INTO matched_songs (source_platform, destination_platform, source_id)
+                    `INSERT INTO non_matched_songs (source_platform, destination_platform, source_id, source_name)
                  VALUES ($1, $2, $3, $4)`,
                     [
                         source,
                         destination,
                         mapping.sourceTrack.id,
+                        mapping.sourceTrack.name
                     ]
                 );
             }

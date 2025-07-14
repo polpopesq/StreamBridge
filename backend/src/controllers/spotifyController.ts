@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import * as spotifyService from "../services/spotifyService";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
 import dotenv from "dotenv";
+import { Playlist } from "@shared/types";
 
 dotenv.config();
 
@@ -87,4 +88,22 @@ export const search = async (req: AuthenticatedRequest, res: Response) => {
   }
 
   res.status(200).json(spotifyTracks);
+};
+
+export const getPlaylist = async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const playlistId = req.query.id as string;
+    const userId = req.user?.user_id;
+
+    if (!playlistId || !userId) {
+      res.status(400).json({ message: "Missing link or user" });
+      return;
+    }
+
+    const playlist: Playlist = await spotifyService.getPlaylistFromSpotify(userId, playlistId);
+    res.json(playlist);
+  } catch (err) {
+    console.error("Error in getPlaylist:", err);
+    res.status(500).json({ message: "Failed to fetch playlist" });
+  }
 };

@@ -5,7 +5,6 @@ import {
   tokenMiddleware,
 } from "../middlewares/tokenMiddleware";
 import { AUTH_COOKIE } from "../middlewares/tokenMiddleware";
-import { FrontendUser } from "@shared/types";
 
 export const login = async (req: Request, res: Response): Promise<void> => {
   const { email, password } = req.body;
@@ -69,4 +68,21 @@ export const getActiveUser = async (
     const user = await UserService.getUser(req.user.user_id);
     res.status(200).json(user)
   } else res.status(404).send({ message: "User not found." })
+};
+
+export const getUserInfo = async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const userId = req.user?.user_id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const profile = await UserService.getProfileData(userId);
+    res.status(200).json(profile);
+  } catch (err) {
+    console.error("Error fetching user profile:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
 };

@@ -56,3 +56,25 @@ export const proceedTransfer = async (sourcePlatform: PlatformKey, destinationPl
         return baseUrls[destinationPlatform] + newPlaylistId;
     }
 }
+
+export function extractSpotifyPlaylistId(url: string): string | null {
+    const match = url.match(/open\.spotify\.com\/playlist\/([a-zA-Z0-9]+)/);
+    return match ? match[1] : null;
+}
+
+export function extractYouTubePlaylistId(url: string): string | null {
+    const match = url.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+    return match ? match[1] : null;
+}
+
+export function detectPlaylistPlatform(url: string): 'spotify' | 'youtube' | null {
+    if (/open\.spotify\.com\/playlist\/[a-zA-Z0-9]+/.test(url)) {
+        return 'spotify';
+    }
+
+    if (/youtube\.com\/playlist\?list=/.test(url) || /youtu\.be\/.*[?&]list=/.test(url)) {
+        return 'youtube';
+    }
+
+    return null;
+}

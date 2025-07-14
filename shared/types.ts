@@ -49,3 +49,38 @@ export interface FrontendUser {
     email: string,
     isAdmin: boolean
 }
+
+export interface MatchedSong {
+    id: number;
+    source_platform: string;
+    destination_platform: string;
+    source_id: string;
+    destination_id: string;
+    source_name: string;
+    destination_name: string;
+}
+
+export interface NonMatchedSong {
+    id: number;
+    source_platform: string;
+    destination_platform: string;
+    source_id: string;
+    source_name: string
+}
+
+export interface Transfer {
+    sourcePlatform: string,
+    destinationPlatform: string,
+    sourceId: string,
+    destinationId: string,
+    status: string,
+    createdAt: string
+}
+
+export interface ProfileData {
+    email: string;
+    isYoutubeConnected: boolean;
+    isSpotifyConnected: boolean;
+    isAdmin: boolean;
+    transfers: Transfer[]
+}

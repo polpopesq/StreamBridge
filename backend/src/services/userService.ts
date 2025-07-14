@@ -1,6 +1,7 @@
 import { FrontendUser } from "@shared/types";
 import { pool } from "../config/db";
 import bcrypt from "bcrypt";
+import { Transfer, ProfileData } from "@shared/types";
 
 const saltRounds = 10;
 
@@ -39,7 +40,7 @@ export const UserService = {
 
     try {
       const insertResult = await pool.query(
-        "INSERT INTO users (email, password) VALUES ($1, $2) RETURNING *",
+        "INSERT INTO users (email, password, isadmin) VALUES ($1, $2, false) RETURNING *",
         [email, hashedPassword]
       );
 
@@ -67,5 +68,47 @@ export const UserService = {
       email: result.email,
       isAdmin: result.isadmin
     };
+  },
+
+  getProfileData: async (userId: number): Promise<ProfileData> => {
+    const userResult = await pool.query(
+      `SELECT email, youtube_id, spotify_id, isAdmin
+         FROM users
+         WHERE id = $1`,
+      [userId]
+    );
+
+    if (userResult.rowCount === 0) {
+      throw new Error("User not found");
+    }
+
+    const user = userResult.rows[0];
+
+    const transfersResult = await pool.query(
+      `SELECT source_platform, destination_platform, playlist_source_id, playlist_destination_id, status, created_at
+         FROM transfers
+         WHERE user_id = $1
+         ORDER BY created_at DESC`,
+      [userId]
+    );
+
+    const transfers: Transfer[] = transfersResult.rows.map((t) => ({
+      sourcePlatform: t.source_platform,
+      destinationPlatform: t.destination_platform,
+      sourceId: t.playlist_source_id,
+      destinationId: t.playlist_destination_id,
+      status: t.status,
+      createdAt: t.created_at.toISOString(),
+    }));
+
+    const profileData: ProfileData = {
+      email: user.email,
+      isYoutubeConnected: !!user.youtube_id,
+      isSpotifyConnected: !!user.spotify_id,
+      isAdmin: user.isadmin,
+      transfers,
+    };
+
+    return profileData;
   }
 };

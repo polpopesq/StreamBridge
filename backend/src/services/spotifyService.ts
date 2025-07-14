@@ -2,7 +2,7 @@ import SpotifyWebApi from "spotify-web-api-node";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { pool } from "../config/db";
-import { SpotifyPlaylist, SpotifyTrack } from "@shared/types";
+import { SpotifyPlaylist, SpotifyTrack, Playlist, TrackUI } from "@shared/types";
 
 dotenv.config();
 
@@ -359,3 +359,41 @@ export const postPlaylistWithTracks = async (userId: number, playlistName: strin
 
   return playlistId;
 }
+
+export const getPlaylistFromSpotify = async (userId: number, playlistId: string): Promise<Playlist> => {
+  const accessToken = await getAccessToken(userId);
+  const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+    headers: { Authorization: `Bearer ${accessToken}` }
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Spotify API error: ${response.status} - ${error}`);
+  }
+
+  const data = await response.json();
+
+  const playlistName = data.name;
+  const imageUrl = data.images?.[0]?.url ?? "";
+  const isPublic = data.public;
+
+  const trackItems = data.tracks.items;
+  const tracks: TrackUI[] = trackItems
+    .filter((item: any) => item.track)
+    .map((item: any): TrackUI => {
+      const track = simplifyTrack(item) as SpotifyTrack;
+      return {
+        id: track.spotifyId,
+        name: track.name,
+        artists: track.artists
+      };
+    });
+
+  return {
+    id: playlistId,
+    name: playlistName,
+    imageUrl,
+    public: isPublic,
+    tracks
+  };
+};

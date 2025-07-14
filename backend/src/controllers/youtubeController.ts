@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { AuthenticatedRequest } from "../middlewares/tokenMiddleware";
 import * as youtubeService from "../services/youtubeService";
-import { access } from "fs";
+import { Playlist } from "@shared/types";
 
 export const login = (req: Request, res: Response) => {
     const step = req.query.step as string || "0";
@@ -88,3 +88,21 @@ export const search = async (req: AuthenticatedRequest, res: Response) => {
 
     res.status(200).json(youtubeTracks);
 }
+
+export const getPlaylist = async (req: AuthenticatedRequest, res: Response) => {
+    try {
+        const playlistId = req.query.id as string;
+        const userId = req.user?.user_id;
+
+        if (!playlistId || !userId) {
+            res.status(400).json({ message: "Missing playlist ID or user" });
+            return;
+        }
+
+        const playlist: Playlist = await youtubeService.getYoutubePlaylistForUser(userId, playlistId);
+        res.json(playlist);
+    } catch (err) {
+        console.error("Error in getYoutubePlaylist:", err);
+        res.status(500).json({ message: "Failed to fetch YouTube playlist" });
+    }
+};

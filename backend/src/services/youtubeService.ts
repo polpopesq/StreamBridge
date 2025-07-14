@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 import { pool } from "../config/db";
 import crypto from "crypto";
-import { YoutubePlaylist, YoutubeTrack } from "@shared/types";
+import { YoutubePlaylist, YoutubeTrack, Playlist, TrackUI } from "@shared/types";
 
 dotenv.config();
 
@@ -397,4 +397,25 @@ export const postPlaylistWithTracks = async (userId: number, playlistName: strin
     }
 
     return playlistId;
+};
+
+export const getYoutubePlaylistForUser = async (
+    userId: number,
+    playlistId: string
+): Promise<Playlist> => {
+    const ytPlaylist: YoutubePlaylist = await getPlaylistById(userId, playlistId);
+
+    const convertedTracks: TrackUI[] = ytPlaylist.tracks.map((track: YoutubeTrack): TrackUI => ({
+        id: track.youtubeId,
+        name: track.name,
+        artists: [track.channelName]
+    }));
+
+    return {
+        id: ytPlaylist.id,
+        name: ytPlaylist.name,
+        public: ytPlaylist.public,
+        imageUrl: ytPlaylist.imageUrl,
+        tracks: convertedTracks
+    };
 };
