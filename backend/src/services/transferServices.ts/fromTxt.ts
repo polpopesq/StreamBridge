@@ -9,7 +9,7 @@ export const txtToSpotifyTransfer = async (userId: number, tracks: TrackUI[]): P
 
     const trackPromises = tracks.map(async track => {
         const trackArtists = track.artists.length === 0 ? "" : track.artists.join(", ");
-        const queryString = track.name + trackArtists === "" ? "" : ` - ${trackArtists}`;
+        const queryString = track.name + " " + trackArtists;
         const queryResult = await spotifyService.searchTracks(queryString, spotifyAccessToken, 1);
         if (queryResult) return { sourceTrack: track, destinationTrack: spotifyToTrackUI(queryResult[0]) };
         const aiResult = await getSpotifyTrackFromAI(queryString, spotifyAccessToken);

@@ -101,7 +101,7 @@ export const TxtInput = ({ transferData, setTransferData }: Props) => {
     return (
         <Box maxWidth="md" mx="auto" mt={5} display="flex" flexDirection="column" gap={2}>
             <Typography variant="h5">
-                Paste or upload your playlist (format: <i>artist - song</i>)
+                Incarca-ti playlistul (format: <i>artist - melodie</i>)
             </Typography>
 
             <Box
@@ -125,7 +125,7 @@ export const TxtInput = ({ transferData, setTransferData }: Props) => {
             >
                 {!uploadedFileName ? (
                     <Typography>
-                        Drag and drop a <strong>.txt</strong> file here or click to select
+                        Dropeaza fisierul <strong>.txt</strong> aici sau click pentru a selecta
                     </Typography>
                 ) : (
                     <Box display="flex" alignItems="center" justifyContent="center" gap={1}>
@@ -150,7 +150,7 @@ export const TxtInput = ({ transferData, setTransferData }: Props) => {
             <TextField
                 multiline
                 minRows={10}
-                placeholder={`Example:\nColdplay - Yellow\nDaft Punk - Get Lucky\nAdele - Hello`}
+                placeholder={`Exemplu:\nColdplay - Yellow\nDaft Punk - Get Lucky\nAdele - Hello`}
                 value={input}
                 onChange={(e) => {
                     setInput(e.target.value);
@@ -163,7 +163,7 @@ export const TxtInput = ({ transferData, setTransferData }: Props) => {
             <SnackbarAlert
                 activeSnackbar={snackbarError}
                 setActiveSnackbar={setSnackbarError}
-                message="Only .txt files are accepted!"
+                message="Acceptam doar fisiere .txt."
             />
         </Box>
     );

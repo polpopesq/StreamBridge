@@ -34,6 +34,7 @@ export const youtubeToTxtTransfer = async (userId: number, playlistId: string): 
 
 const normalizeTracks = (tracks: YoutubeTrack[]): YoutubeTrack[] => {
     const cleanTitle = (title: string): string => {
+        if (!title) return "";
         let cleaned = title.replace(/\(.*?\)|\[.*?\]/g, "");
         cleaned = cleaned.replace(/\b(feat\.?|ft\.?|featuring|official|video|audio|lyrics|HD|HQ|remix|full|explicit|clean)\b/gi, "");
         cleaned = cleaned.replace(/\s*(x|&)\s*/gi, " ");
@@ -42,6 +43,7 @@ const normalizeTracks = (tracks: YoutubeTrack[]): YoutubeTrack[] => {
     };
 
     const cleanChannelName = (channelName: string): string => {
+        if (!channelName) return "";
         return channelName
             .replace(/\s*-?\s*Topic$/i, "")   // ex: "Coldplay - Topic" -> "Coldplay"
             .replace(/\s*VEVO$/i, "")        // ex: "AdeleVEVO" -> "Adele"
@@ -50,8 +52,8 @@ const normalizeTracks = (tracks: YoutubeTrack[]): YoutubeTrack[] => {
 
 
     return tracks.map(track => {
-        const cleanedTitle = cleanTitle(track.name);
-        const cleanedChannel = cleanChannelName(track.channelName);
+        const cleanedTitle = cleanTitle(track.name) || "";
+        const cleanedChannel = cleanChannelName(track.channelName) || "";
 
         return {
             ...track,
