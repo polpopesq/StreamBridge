@@ -54,4 +54,37 @@ export const getUser = async (): Promise<FrontendUser> => {
         console.error('Error fetching user data:', error);
         throw error;
     }
-} 
+}
+
+export const requestPasswordReset = async (email: string) => {
+    const response = await fetch(`${BACKEND_URL}/auth/reset-password`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+        const errorData = await response.json();
+        console.error(errorData.message || "Password reset request failed");
+        return errorData;
+    }
+
+    return await response.json();
+};
+
+export const resetPassword = async (token: string, newPassword: string): Promise<boolean> => {
+    const response = await fetch(`${BACKEND_URL}/auth/new-password`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ token, newPassword }),
+    });
+
+    const data = response.json();
+    console.log(data);
+
+    return response.ok;
+}

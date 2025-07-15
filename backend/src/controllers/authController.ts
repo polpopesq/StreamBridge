@@ -86,3 +86,31 @@ export const getUserInfo = async (req: AuthenticatedRequest, res: Response): Pro
     res.status(500).json({ error: "Internal server error" });
   }
 };
+
+export const resetPassword = async (req: Request, res: Response) => {
+  const { email } = req.body;
+  const user = await UserService.findByEmail(email);
+  if (!user) {
+    res.status(404).send({ message: `User with email ${email} not found.` });
+    return;
+  }
+
+  const token = UserService.generateResetToken(user.email);
+  const resetLink = `${process.env.FRONTEND_URL}/new-password/${token}`;
+
+  await UserService.sendResetPasswordEmail(user.email, resetLink);
+  res.status(200).json({ message: "Email trimis cu succes." });
+}
+
+export const setNewPassword = async (req: Request, res: Response) => {
+  const { token, newPassword } = req.body;
+  try {
+    const userId = await UserService.verifyResetToken(token);
+    await UserService.setNewPassword(userId, newPassword);
+    res.status(204).json({ message: "Parola a fost schimbata cu succes." })
+  } catch (err) {
+    const errorMessage = err instanceof Error ? err.message : "Unknown error";
+    res.status(400).send({ message: `${errorMessage}; password not updated.` });
+    return;
+  }
+}

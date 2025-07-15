@@ -1,4 +1,4 @@
-import { Container, Typography, TextField, Button, Box } from "@mui/material";
+import { Container, Typography, TextField, Button, Box, Link } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 import * as authService from "../services/authService";
 import { useState } from "react";
@@ -74,6 +74,12 @@ const LoginPage = () => {
           <Button color="secondary" onClick={() => navigate("/register")}>
             Creează unul
           </Button>
+        </Typography>
+        <Typography variant="body2" sx={{ mt: 2 }}>
+          Ai uitat parola?{" "}
+          <Link href="/reset-password" style={{ color: "#1976d2" }} underline="none">
+            Resetează parola
+          </Link>
         </Typography>
       </Box>
       <SnackbarAlert

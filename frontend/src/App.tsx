@@ -17,6 +17,8 @@ import LoadingScreen from "./pages/LoadingScreen";
 import CheckTransferPage from "./pages/CheckTransferPage";
 import SuccessScreen from "./pages/SuccessScreen";
 import AdminPage from "./pages/AdminPage";
+import ResetPasswordPage from "./pages/ResetPasswordPage";
+import SetNewPasswordPage from "./pages/SetNewPasswordPage"
 
 function App() {
   const { loggedIn, setLoggedIn } = useAuth();
@@ -71,7 +73,9 @@ function App() {
             {<ProtectedRoute isAuthenticated={loggedIn}>
               <SuccessScreen />
             </ProtectedRoute>} />
-          <Route path="admin dashboard" element={<AdminPage />} />
+          <Route path="/admin dashboard" element={<AdminPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
+          <Route path="/new-password/:token" element={<SetNewPasswordPage />} />
         </Routes>
       </BrowserRouter>
     </ThemeProvider>
