@@ -25,7 +25,7 @@ const createLoginURL = (step: string): { url: string; state: string } => {
     const csrfToken = crypto.randomBytes(16).toString("hex");
     const state = `${csrfToken}__${step}`;
     const query = new URLSearchParams({
-        client_id: process.env.YT_CLIENT_ID!,
+        client_id: process.env.YT_CLIENT_ID2!,
         redirect_uri: process.env.YT_REDIRECT_URI!,
         response_type: "code",
         scope: scopes.join(" "),
@@ -49,8 +49,8 @@ export const exchangeCodeForTokens = async (code: string, userId: number): Promi
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
             code,
-            client_id: process.env.YT_CLIENT_ID!,
-            client_secret: process.env.YT_CLIENT_SECRET!,
+            client_id: process.env.YT_CLIENT_ID2!,
+            client_secret: process.env.YT_CLIENT_SECRET2!,
             redirect_uri: process.env.YT_REDIRECT_URI!,
             grant_type: "authorization_code",
         }),
@@ -112,8 +112,8 @@ export const refreshAccessToken = async (refreshToken: string): Promise<{ access
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: new URLSearchParams({
-            client_id: process.env.YT_CLIENT_ID!,
-            client_secret: process.env.YT_CLIENT_SECRET!,
+            client_id: process.env.YT_CLIENT_ID2!,
+            client_secret: process.env.YT_CLIENT_SECRET2!,
             refresh_token: refreshToken,
             grant_type: "refresh_token"
         }),
